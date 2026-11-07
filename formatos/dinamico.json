@@ -1,0 +1,310 @@
+{
+ "formato": "talkinghead",
+ "_formato": "Estilo DINAMICO. Todo lo de limpio mas b-roll, frases animadas y motion graphics que ilustran lo que se dice. Un estimulo cada 3 s. Para anuncios y contenido de descubrimiento.",
+ "_": "Configuracion del formato TALKINGHEAD. Es la FUENTE DE VERDAD: los scripts de bin/ leen de aqui con bin/cfg.py. Cambiar un valor aqui cambia todos los videos que se monten despues, sin tocar codigo.",
+ "fuentes": {
+  "serif": "PlayfairDisplay-Italic.ttf",
+  "_serif": "italica de acento, solo para el remate del bloque"
+ },
+ "colores": {
+  "tinta": "#ffffff",
+  "ocre": "#FFDE21",
+  "_": "SOLO estos dos en todo el texto. Blanco ~90%, amarillo ~10%."
+ },
+ "glow": "0 0 14px rgba(0,0,0,.34), 0 0 5px rgba(0,0,0,.42), 0 2px 4px rgba(0,0,0,.32)",
+ "_glow": "sin borde nunca; solo este halo negro muy suave alrededor",
+ "subtitulo": {
+  "peso": 600,
+  "cuerpo": 68,
+  "cuerpo_min": 46,
+  "interletrado": "-0.038em",
+  "y": "62%",
+  "margen": "10%",
+  "_": "medido en referencia: 2.8% de tinta, centro al 50.2%, siempre blanco y 1 linea",
+  "_y": "justo por encima de la linea que separa el tercio medio del inferior (66.7%): lo bastante abajo para no competir con la cara, y lo bastante arriba para no tocar la UI de Instagram",
+  "_peso": "SemiBold: la Bold pesaba demasiado y la Regular se quedaba corta al lado del bloque animado",
+  "palabras_max": 4,
+  "caracteres_max": 22,
+  "pausa_corte": 0.35,
+  "cue_min": 0.38,
+  "cue_legible": 0.3,
+  "sin_puntos": true,
+  "_cue_min": "un cue mas corto que esto parpadea: se fusiona con el siguiente"
+ },
+ "bloque": {
+  "cuerpo_min": 56,
+  "ancho_max": 0.84,
+  "alto_max": 620,
+  "margen": "8%",
+  "ratio_chica": 0.42,
+  "ratio_serif": 0.62,
+  "solape_serif": -0.12,
+  "interlinea": 0.9,
+  "interletrado_chica": "-0.015em",
+  "interletrado_grande": "-0.03em",
+  "mayusculas_grande": true,
+  "palabras_nucleo": 2,
+  "_": "ratios 0.51 : 1 : 0.75 medidos en referencia1 @51.35s; las lineas casi se tocan",
+  "_alto": "con el bloque centrado al 62%, 620px de alto lo dejan llegar como mucho al 78% de la pantalla: por encima de la zona de perfil y descripcion de IG",
+  "_chica": "medido en referencia 0.51. Se subio a 0.64 y quedaba grande de mas; con el cuerpo grande creciendo en frases cortas, 0.50 lo deja en su sitio.",
+  "salida": 0.16,
+  "solape_chica": 0.0,
+  "_juntas": "aire entre las tres lineas. Se probo 0.76 con solapes fuertes y se encimaban demasiado. Subir interlinea = mas separacion.",
+  "interletrado_serif": "-0.055em",
+  "_mayusculas": "mayuscula inicial SOLO en la primera linea del guion; el resto en minusculas. La linea grande del bloque va en mayusculas por su rol, no por ortografia.",
+  "cuerpo_max": 168,
+  "_cuerpo": "cuerpo_max es el techo: el bloque busca el tamano MAS GRANDE que quepa en la zona segura, asi una palabra corta se ve grande y una frase larga baja sola.",
+  "cuerpo_ref": 112,
+  "_serif": "la serifa se calcula sobre cuerpo_ref (con tope), no sobre el cuerpo crecido: cuando la palabra central es corta y el bloque sube, el remate se queda donde estaba",
+  "brillo": "35%",
+  "brillo_radio": "30px",
+  "_brillo": "brillo del propio color de la letra (currentColor), sin halo oscuro: en las frases animadas el negro alrededor se lee como borde. El subtitulo normal si mantiene el halo.",
+  "halo": "0 0 18px rgba(0,0,0,.30), 0 0 7px rgba(0,0,0,.34)",
+  "_halo": "halo oscuro flojo bajo el brillo de color: sin el, la letra pierde potencia contra el fondo. Aligerado y sin el componente desplazado del subtitulo normal, que es el que se leia como borde.",
+  "_ratios": "chica y serif son PROPORCIONALES a la linea grande (con suelo y techo en el CSS). Estuvieron fijas en 56 y 84 px y con frases largas la linea de en medio bajaba por debajo de ellas: la jerarquia se invertia y la palabra central, que es la que tiene que mandar, quedaba diminuta.",
+  "margen_tras_salida": 0.04,
+  "hold_min": 0.12,
+  "adelanto": 0.1,
+  "entrada_dur": 0.3,
+  "_hold_min": "margen tras la ultima palabra de una frase animada. Se puede acortar hasta aqui para que el subtitulo siguiente quepa en su sitio",
+  "hold_kw": 0.28,
+  "_hold_kw": "con los 0.6 de por defecto el bloque seguia en pantalla cuando ya habia empezado la frase siguiente y se comia su subtitulo entero",
+  "_margen": "9%. El problema de las lineas saliendose no era el margen sino que se calculaba contra 1080 cuando la pagina se maqueta a otro ancho; ahora se mide el ancho real de la composicion. Un punto mas que el 8% de los subtitulos porque el acomodo pega las lineas al borde del bloque.",
+  "colchon": 24,
+  "_colchon": "px de aire dentro del bloque. Estuvo en 190 para tapar un fallo de medida (el bloque se comparaba contra 1080 en vez de contra el ancho real de la composicion) y el efecto fue que el texto quedaba diminuto. Arreglada la medida, con 24 basta: el bloque vuelve a ocupar pantalla y no toca el margen.",
+  "serif_max_palabras": 4,
+  "_serif_max": "mas de 4 palabras en la italica y el remate se pierde; a partir de ahi se parte en dos lineas."
+ },
+ "entrada": {
+  "chica": {
+   "x": -34,
+   "y": 0,
+   "duracion": 0.3
+  },
+  "grande": {
+   "x": 0,
+   "y": 30,
+   "duracion": 0.3
+  },
+  "serif": {
+   "x": 38,
+   "y": 10,
+   "duracion": 0.3
+  },
+  "_": "cada registro entra por un lado distinto, recorridos cortos"
+ },
+ "acomodos": [
+  [
+   "izq",
+   "izq",
+   "der"
+  ],
+  [
+   "der",
+   "der",
+   "izq"
+  ],
+  [
+   "izq",
+   "izq",
+   "med"
+  ],
+  [
+   "der",
+   "med",
+   "der"
+  ],
+  [
+   "med",
+   "izq",
+   "der"
+  ],
+  [
+   "izq",
+   "der",
+   "izq"
+  ]
+ ],
+ "_acomodos": "rotan por orden de aparicion para que no se repita nunca igual",
+ "estimulos": {
+  "hueco_max": 3.0,
+  "zoom_punch": 0.12,
+  "zoom_suave": 0.09,
+  "_": "el hueco se rellena con ZOOMS, nunca con stingers: los stingers son a mano"
+ },
+ "stingers": {
+  "entra": 0.34,
+  "sale": 0.3,
+  "cede_camara": 0.04,
+  "densidad_aviso": 8,
+  "_densidad": "avisa si hay mas de N stingers por minuto: no deben salir siempre",
+  "zoom": {
+   "desde": 1.0,
+   "hasta": 1.12,
+   "blur": 18,
+   "blur_entra": 30,
+   "_": "push lento del grafico; el texto no se mueve ni se desenfoca"
+  },
+  "grano": 0.11,
+  "cuerpo": 126,
+  "alto_max": 430,
+  "encaje": 1.2,
+  "_encaje": "si el b-roll o el grafico va a terminar a menos de esto de un corte del A-roll, se ALARGA hasta el corte y sale de golpe. Asi se ve un salto de plano donde si no se verian dos seguidos. Nunca se acorta, y nunca se pasa del metraje que tiene el clip."
+ },
+ "audio": {
+  "volumen_sfx": 0.55,
+  "click_solo_en_frases": true,
+  "lufs_objetivo": -15,
+  "corte_broll": 0.34,
+  "_corte": "transitorio seco al entrar y al salir el b-roll",
+  "musica_db": -6,
+  "musica_vol": 0.62,
+  "_musica": "SOLO instrumentales, sin voz (una voz cantada compite con la tuya). Hip hop, jazz o trap por el ritmo. Verificado con prueba mid/side: la voz cantada va centrada y se cancela en el canal lateral.",
+  "pista": "",
+  "_pista": "Pon aqui el nombre de un archivo de la carpeta musica/ del kit. Musica que va con este estilo: Instrumental de hip hop o boom bap con el bombo bien marcado. Sin voz cantada. Usa solo musica con licencia para anuncios.",
+  "voz_lufs": -15.5,
+  "_voz": "la voz se limpia con DeepFilterNet3 CON post-filtro (--pf): baja el piso de ruido entre palabras de -62.9 a -66.8 dB sin tocar la inteligibilidad. Despues EQ (turbidez, caja, presencia, aire), deesser, compresion suave y loudnorm.",
+  "voz_limpieza": "deepfilternet3 + post-filtro",
+  "voz_eq": {
+   "turbidez_hz": 250,
+   "turbidez_db": -2.5,
+   "presencia_hz": 3200,
+   "presencia_db": 4.0,
+   "aire_hz": 7500,
+   "aire_db": 3.0,
+   "caja_hz": 430,
+   "caja_db": -2.0
+  },
+  "sfx": {
+   "reversa": 0.18,
+   "marea": 0.14,
+   "subdrop": 0.34,
+   "brillo": 0.16,
+   "glitch": 0.19,
+   "impact": 0.22,
+   "corte_entrada": 0.3,
+   "corte_vuelta": 0.22,
+   "whoosh_zoom": 0.1,
+   "impacto_zoom": 0.26,
+   "whoosh_arranque": 0.34
+  },
+  "_orden": "ORDEN DE TRABAJO: 1) limpiar la voz, 2) elegir la musica, 3) lo demas. Es obligatorio",
+  "_musica_sel": "SOLO instrumentales sin voz. Hip hop, jazz o trap por el ritmo. Se verifica con prueba mid/side: la voz cantada va centrada y se cancela en el canal lateral",
+  "_sfx": "niveles subidos ~45%: se pedian mas presentes",
+  "_musica_db": "subido de -10: se pedia mas presente. El ducking bajo la voz sigue en -9 dB.",
+  "_musica_vol": "el elemento <audio> aplica ESTE volumen ENCIMA de musica_db. Subir solo musica_db se quedaba corto: 0.5 son otros -6 dB. Con -6 dB y 0.62 la musica sube unos 6 dB sobre lo que estaba.",
+  "voz_comp": {
+   "umbral_db": -18,
+   "ratio": 2.0,
+   "makeup": 1.0
+  },
+  "_voz_comp": "compresion suave. Con ratio 3 y makeup 2 la voz sonaba saturada: aplastaba la dinamica y se oia apretada. Ratio 2 y sin casi makeup deja respirar. El nivel final baja de -14 a -15.5 LUFS por lo mismo."
+ },
+ "posicion_texto": {
+  "anillos": "abajo",
+  "malla": "medio",
+  "barras": "abajo",
+  "pulso": "abajo",
+  "flecha": "arriba",
+  "cifra": "abajo",
+  "alerta": "abajo",
+  "orbe": "abajo",
+  "ondas": "arriba",
+  "_": "donde va el texto segun donde este el objeto del grafico; arriba=26%, medio=50%, abajo=72%",
+  "icono": "abajo"
+ },
+ "iconos": {
+  "biblioteca": "Lucide 1.31.0 (ISC)",
+  "tam": "470px",
+  "halo": "700px",
+  "trazo": 1.35,
+  "_": "iconos de trazo con currentColor. Grandes a proposito: uno pequeno en medio de un fondo oscuro deja la pantalla vacia y no protagoniza. Composiciones que llenan: duo, esquinas, asomado, patron."
+ },
+ "banda_util": "17%",
+ "_banda": "la pantalla en 6 partes: los 4 sextos del medio (16.7%-83.3%) son lo que la gente ve. Arriba esta la lupa de IG/TikTok y abajo el nombre y la descripcion. Ninguna pieza grafica lleva su masa fuera de esa banda.",
+ "cortes": {
+  "silencio_db": -32,
+  "silencio_min": 0.28,
+  "aire": 0.1,
+  "segmento_min": 0.2,
+  "fragmento_util": 1.2,
+  "retoma_parecido": 0.6,
+  "arranque_aire": 0.05,
+  "_analisis": "los silencios se detectan sobre una copia normalizada a -16 LUFS: el umbral es absoluto y en material grabado bajo cortaba DENTRO de las palabras",
+  "_fragmento": "por debajo de fragmento_util un trozo suelto se lee como un hipo: se descarta si es retoma (parecido >= retoma_parecido) y si no, se fusiona",
+  "_arranque": "el video empieza en la primera palabra, con arranque_aire de margen",
+  "pausa_max": 0.28,
+  "pausa_deja": 0.22,
+  "nivel_rel": 0.09,
+  "_cadencia": "no se permite mas de pausa_max de silencio seguido. El corte por silencio de la primera pasada usa umbral ABSOLUTO y se le escapa casi todo (14s de silencio en un video de dos minutos). bin/cadencia.py vuelve a medir con umbral RELATIVO al nivel de voz y deja solo pausa_deja, quitando el CENTRO del silencio, nunca los bordes.",
+  "borde_max": 0.14,
+  "_borde": "el empalme del corte no puede caer donde todavia suena la voz: el umbral marca silencio antes de que la palabra acabe de apagarse y se oian palabras a medias. El recorte se encoge hasta que los dos bordes estan por debajo de borde_max del nivel de voz."
+ },
+ "palabra_clave": {
+  "activa": true,
+  "cuerpo": 138,
+  "cuerpo_min": 64,
+  "y": "20.5%",
+  "mayusculas": true,
+  "color": "ocre",
+  "ancho_max": 0.82,
+  "verbos": [
+   "comenta",
+   "escribe",
+   "manda",
+   "pon",
+   "teclea",
+   "di",
+   "responde",
+   "contesta"
+  ],
+  "_": "la palabra del CTA se fija arriba (por encima de la cabeza, dentro de la banda util) desde que se dice hasta el final. Lleva pastilla oscura para leerse sobre cualquier fondo"
+ },
+ "broll": {
+  "velo": "",
+  "carpeta": "input/broll",
+  "_": "material propio. Recibe el MISMO tratamiento que un grafico (push, desenfoque de bordes, vineta, grano) para que no se note el salto. NO lleva texto propio: los subtitulos siguen corriendo por encima, con velo para leerse",
+  "_tecnico": "se declara en el HTML durante el montaje, nunca por JS (HyperFrames compila los clips del HTML inicial). El <video> necesita id o sale congelado. Un <img class=clip> NO funciona: la imagen la revela GSAP",
+  "_velo": "SIN velo. El b-roll no se oscurece: solo lleva el desenfoque de bordes. El velo negro apagaba el material, que es justo lo que se ha ido a buscar. El subtitulo se lee por su propio halo.",
+  "permitido": true
+ },
+ "graficos_texto": {
+  "automatico": true,
+  "cierre": 0.08,
+  "_": "el texto de un motion graphic ES lo que se dice mientras dura, compuesto del transcript con el tiempo real de cada palabra. Antes yo elegia un titular y todo lo demas que sonaba durante esos segundos no aparecia en ninguna parte"
+ },
+ "revision": {
+  "obligatoria": true,
+  "niveles": 3,
+  "ventana_repeticion": 4.0,
+  "palabras_comunes_min": 2,
+  "_": "A FUEGO: con CUALQUIER cambio se pasa bin/revisar.py. Tres niveles porque cada fallo se ve en un sitio distinto: DATOS (duplicados, solapes, repeticiones, ausencias), COMPOSICION (hyperframes check) y RENDER (frames del mp4)"
+ },
+ "arranque": {
+  "activo": true,
+  "escala": 1.75,
+  "duracion": 0.55,
+  "ease": "power3.out",
+  "sfx_nivel": 0.42,
+  "_": "GANCHO TRIPLE en el primer segundo: VISUAL el zoom out, AUDITIVO el whoosh que CAE en el frame 0, y de TEXTO la primera frase animada. Los tres o ninguno.",
+  "destello": 0.3,
+  "destello_dur": 0.16,
+  "rebote": 0.035,
+  "_explosivo": "el gancho tiene que ser un GOLPE, no un movimiento. Zoom out mas fuerte (1.75) y mas rapido (0.55s), un destello muy corto en el frame 0 y un rebote seco al aterrizar. El destello es lo que lo convierte en impacto; largo o fuerte marea y se lee como un fallo."
+ },
+ "ritmo": {
+  "ajuste": 0.13,
+  "_": "los zooms se empujan hasta 0.13s para caer con un golpe de la cancion, y solo si el golpe queda a menos de eso. Vale mas un efecto fuera del compas que uno fuera de la frase."
+ },
+ "contenido": {
+  "frases_animadas": true,
+  "graficos": true,
+  "broll": true,
+  "_": "DINAMICO lleva frases animadas (keywords.json), motion graphics (stingers y props en beats.json, no mas de 8 por minuto) y b-roll propio o con licencia (input/broll/). Reparto objetivo 50/30/20."
+ },
+ "reparto": {
+  "cara": 50,
+  "broll": 30,
+  "mg": 20
+ }
+}

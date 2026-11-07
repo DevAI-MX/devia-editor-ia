@@ -1,0 +1,72 @@
+name: pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  editar-un-video:
+    name: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Windows y Linux corren el transcriptor en el procesador (Intel o AMD Ryzen).
+        # El Mac con chip Apple se prueba en local: los minutos de macOS cuestan 10 veces mas.
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: astral-sh/setup-uv@v10.3.3
+
+      # El minimo que pide el motor de render: si pasa con 22, pasa con las nuevas.
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 22
+
+      - name: ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+
+      - name: ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
+
+      - name: el instalador de Windows se puede leer
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $errores = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD\setup-windows.ps1", [ref]$null, [ref]$errores) | Out-Null
+          if ($errores) { $errores; exit 1 }
+
+      - name: el instalador de Windows reconoce Node 22
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # Solo define las funciones del instalador, sin correrlo: aqui no hay winget.
+          $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PWD\setup-windows.ps1", [ref]$null, [ref]$null)
+          $funciones = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)
+          foreach ($f in $funciones) { . ([scriptblock]::Create($f.Extent.Text)) }
+          if (-not (Node-AlDia)) { "Node-AlDia no reconoce $(node -v)"; exit 1 }
+
+      - name: modelo de transcripcion en cache
+        uses: actions/cache@v6.1.0
+        with:
+          path: ~/.cache/huggingface
+          key: whisper-${{ runner.os }}-faster-whisper-large-v3
+
+      - name: instalar el kit
+        run: bash setup.sh
+
+      - name: pruebas
+        run: |
+          source bin/entorno.sh
+          uv pip install --quiet --python "$PY" -r requirements-pruebas.txt
+          "$PY" -m pytest -v

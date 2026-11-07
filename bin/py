@@ -1,0 +1,4 @@
+#!/bin/bash
+# py: corre el Python del kit con su entorno. Uso: bash bin/py bin/cues.py input/video.json
+source "$(dirname "$0")/entorno.sh"
+exec "$PY" "$@"

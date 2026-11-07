@@ -1,0 +1,16 @@
+.venv/
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
+input/*
+output/*
+salida/*
+assets/sfx/*
+musica/*
+!musica/LEEME.md
+!input/.gitkeep
+!output/.gitkeep
+!salida/.gitkeep
+!assets/sfx/.gitkeep

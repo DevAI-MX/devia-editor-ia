@@ -1,0 +1,2540 @@
+<!doctype html>
+<html lang="es" data-resolution="portrait">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1080, height=1920" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="estilo.js"></script>
+    <script src="iconos.js"></script>
+    <script src="cues.js"></script>
+    <style>
+      /* Fuentes servidas desde el propio proyecto: el render no depende de lo
+         que este instalado en la maquina. Inter para todo, y UNA serif italica
+         de acento para palabras sueltas de las frases principales. */
+      /* Inter variable: cubre todo el rango 100-900, asi tenemos tambien el
+         SemiBold 600 que las estaticas (400/700/900) no daban. */
+      @font-face { font-family: "Inter"; font-weight: 100 900;
+                   src: url("fuentes/Inter-Variable.ttf") format("truetype-variations"); }
+      /* Familias del formato editorial: el titulo del gancho y la ficha. Se
+         declaran siempre (los archivos viajan con la plantilla) y cada formato elige. */
+      @font-face { font-family: "Montserrat"; font-weight: 100 900;
+                   src: url("fuentes/Montserrat-Variable.ttf") format("truetype-variations"); }
+      @font-face { font-family: "Poppins"; font-weight: 300; src: url("fuentes/Poppins-Light.ttf"); }
+      @font-face { font-family: "Poppins"; font-weight: 400; src: url("fuentes/Poppins-Regular.ttf"); }
+      @font-face { font-family: "Poppins"; font-weight: 500; src: url("fuentes/Poppins-Medium.ttf"); }
+      @font-face { font-family: "Poppins"; font-weight: 600; src: url("fuentes/Poppins-SemiBold.ttf"); }
+      @font-face { font-family: "Poppins"; font-weight: 700; src: url("fuentes/Poppins-Bold.ttf"); }
+      @font-face { font-family: "Poppins"; font-weight: 800; src: url("fuentes/Poppins-ExtraBold.ttf"); }
+      @font-face { font-family: "CormorantItalic"; font-style: italic; font-weight: 300 700;
+                   src: url("fuentes/CormorantGaramond-Italic-Variable.ttf") format("truetype-variations"); }
+      @font-face { font-family: "Acento"; font-style: italic;
+                   src: url("fuentes/{{SERIF}}") format("truetype"); }
+
+      /* ==========================================================
+         SISTEMA BASE — valores medidos sobre la referencia
+         subtitulo: centro Y 50.2%, centro X 49.9%, tinta 2.8% del alto,
+         1 sola linea, ~64 cambios/min.
+         ========================================================== */
+      :root {
+        /* Los valores vienen de estilo/estilo.json via estilo.js. Lo de aqui es
+           solo el respaldo por si se abre el HTML suelto. */
+        --safe-x: 10%;
+        --sub-y: 50.2%;
+        --sub-size: 68px;
+        --sub-peso: 700;
+        --sub-track: -0.038em;
+        --kw-margen: 8%;
+        --r-chica: 0.51;
+        --r-serif: 0.75;
+        --solape: -0.10;
+        --interlinea: 0.94;
+        /* SOLO DOS COLORES DE TEXTO EN TODO EL VIDEO. Nada mas. */
+        --tinta: #ffffff;       /* ~90% de lo que se lee */
+        --ocre: #FFDE21;        /* amarillo: el 10% con enfasis */
+        /* glow negro muy suave, sin borde: despega la letra del fondo sin
+           engordarla ni recortarla */
+        --glow: 0 0 14px rgba(0,0,0,.34), 0 0 5px rgba(0,0,0,.42), 0 2px 4px rgba(0,0,0,.32);
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1080px; height: 1920px; overflow: hidden; background: #000;
+        font-family: "Inter", -apple-system, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ---------- A-roll ----------
+         El zoom se anima sobre #camara, NUNCA sobre el <video>: animar el
+         propio elemento de video hace que Chrome deje de pintar frames. */
+      /* El zoom se anima por CLASE, no por id. Cuando hay algo puesto DETRAS del que
+         habla, su recorte va en una segunda caja que tiene que moverse exactamente
+         igual que el plano: si solo se animara #camara, el recorte se quedaria quieto
+         mientras el plano se acerca y se veria un doble desalineado. */
+      .camara {
+        /* En el formato con marco el plano vive DENTRO de la banda. Dejarlo a pantalla
+           completa y taparlo con barras le cortaba la cabeza: lo que las barras ocultan
+           es justo donde estaba su frente. */
+        position: absolute;
+        top: var(--camara-arriba, 0); bottom: var(--camara-abajo, 0);
+        left: 0; right: 0;
+        transform-origin: 50% 42%;   /* pivote en la cara */
+        will-change: transform;
+      }
+      /* object-position: con marco, el plano se coloca para que la cabeza entre completa (bin/encuadre.py) */
+      #aroll, .camara > video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% var(--camara-pos-y, 50%); }
+      /* El recorte del sujeto: va por encima de los props y por debajo del texto, asi
+         que lo que se pone detras queda tapado por su cuerpo y sus manos. */
+      /* OJO con el selector: las cajas se llaman detras-0, detras-1... Con `#detras`
+         la regla no casaba con ninguna, se quedaban opacas de principio a fin y el
+         recorte del sujeto tapaba el video entero. */
+      [id^="detras-"] {
+        z-index: 4; opacity: 0; visibility: hidden; pointer-events: none;
+      }
+      /* silueta del sujeto en BLANCO con bloom para el doble flash del gancho: el
+         recorte real pasa por brightness(0) invert(1) y queda blanco puro con su alfa */
+      #silueta {
+        z-index: 4; opacity: 0; visibility: hidden; pointer-events: none;
+        filter: brightness(0) invert(1) drop-shadow(0 0 28px rgba(255,255,255,.95)) drop-shadow(0 0 60px rgba(255,255,255,.6));
+      }
+
+      /* ---------- FICHA: la pantalla blanca con emoji ----------
+         Es lo que hace que el video no sea puro b-roll. El plano CORTA a una pantalla
+         blanca con una frase arriba y un simbolo grande debajo, y vuelve. Medido en la
+         referencia: fondo blanco puro, texto negro al 28-32% de altura y el objeto del
+         32% al 70%, ocupando hasta el 80% del ancho.
+         El emoji se elige por lo que se esta diciendo, no siempre el mismo. */
+      /* Fuera de su ventana la ficha se esconde de verdad, no solo con opacidad: el
+         revisor de contraste no mira la opacidad y veia texto negro sobre el plano
+         oscuro, marcando fallos que en pantalla no existen. */
+      /* Blanco con textura de lienzo, no un blanco plano: una trama de puntos muy
+         suave, casi imperceptible, que le quita el aspecto de pantalla vacia. */
+      .stinger.ficha {
+        background-color: var(--ficha-fondo, #f7f6f3);
+        background-image:
+          radial-gradient(rgba(0,0,0,.055) 1px, transparent 1px),
+          radial-gradient(rgba(0,0,0,.035) 1px, transparent 1px);
+        background-size: 14px 14px, 14px 14px;
+        background-position: 0 0, 7px 7px;
+        visibility: hidden;
+      }
+      .stinger.ficha .fi-txt {
+        position: absolute; left: 8%; right: 8%; top: var(--ficha-txt-y, 29%);
+        transform: translateY(-50%);
+        font-family: "Inter"; color: var(--ficha-tinta, #101014);
+        text-align: center; line-height: 1.1;
+      }
+      .stinger.ficha .fi-txt .pal {
+        display: inline-block; opacity: 0; will-change: transform, opacity;
+        font-size: var(--ficha-cuerpo, 104px); font-weight: 800; letter-spacing: -0.02em;
+      }
+      .stinger.ficha .fi-txt .pal + .pal { margin-left: 0.22em; }
+      .stinger.ficha .fi-txt .pal.flojo { font-weight: 600; opacity: .55; }
+      /* El simbolo y el subtitulo se componen COMO UN BLOQUE dentro del area de
+         respeto (los tres quintos de en medio, 20%-80%). Hay dos composiciones:
+           emoji ARRIBA y texto debajo  -> el emoji ocupa 22%-46%, el texto va al 62%
+           emoji ABAJO y texto encima   -> el texto va al 38%, el emoji ocupa 54%-78%
+         Con las dos piezas siempre dentro de la banda y con aire entre ellas. Antes el
+         emoji "abajo" caia hasta el 88% — fuera de lo visible — y el texto se quedaba
+         en su sitio de siempre, en medio: se leia como dos cosas sueltas y mal puestas.
+         La posicion se fija en % de ALTURA con `top`, nunca con padding (el padding en
+         % va sobre el ancho). */
+      .stinger.ficha .fi-emo {
+        position: absolute; left: 0; right: 0;
+        display: flex; justify-content: center; align-items: center;
+      }
+      .stinger.ficha .fi-emo.arriba { top: 22%; height: 24%; }
+      .stinger.ficha .fi-emo.abajo  { top: 54%; height: 24%; }
+      .stinger.ficha .fi-emo.centro { top: 38%; height: 24%; }
+      /* variantes laterales: misma altura, desplazado al lado libre */
+      .stinger.ficha .fi-emo.arriba.izq, .stinger.ficha .fi-emo.abajo.izq { justify-content: flex-start; padding-left: 9%; }
+      .stinger.ficha .fi-emo.arriba.der, .stinger.ficha .fi-emo.abajo.der { justify-content: flex-end; padding-right: 9%; }
+      .stinger.ficha .fi-emo > img { height: 100%; width: auto; display: block; }
+      .stinger.ficha .fi-emo img {
+        width: auto; display: block;
+      }
+
+      /* Una ficha puede llevar FOTO en vez de emoji: la cara de un cliente cuando el
+         guion lo nombra. Va enmarcada y con sombra para que se lea como una pieza
+         puesta sobre la ficha, no como un plano a sangre — a sangre competiria con el
+         talking head. Ocupa la mitad de la altura util y deja sitio al subtitulo. */
+      .stinger.ficha .fi-foto {
+        position: absolute; left: 0; right: 0;
+        display: flex; justify-content: center; align-items: center;
+      }
+      .stinger.ficha .fi-foto.arriba { top: 13%; height: 40%; }
+      .stinger.ficha .fi-foto.abajo  { top: 45%; height: 40%; }
+      .stinger.ficha .fi-foto.centro { top: 29%; height: 40%; }
+      .stinger.ficha .fi-foto img {
+        height: 100%; width: auto; display: block;
+        border-radius: 22px; object-fit: cover;
+        box-shadow: 0 10px 34px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.14);
+      }
+
+      /* ---------- TOP 10: el rotulo del punto ----------
+         Numero grande y titulo debajo. Entra cuando se enuncia el punto y se queda
+         hasta el siguiente, mientras abajo el subtitulo va contando la explicacion.
+         Son dos trabajos distintos y por eso van en dos sitios distintos. */
+      /* El rotulo del TOP 10 es UN SOLO BLOQUE pequeno arriba: una imagen chica y,
+         debajo, UNA linea "10 - NUNCA HAGAS X" (numero y texto juntos, nunca sueltos).
+         Termina hacia el 12% de alto: el pelo empieza al 18% y la cara al 24%.
+         Se coloca con `top`, no con padding (el padding en % va sobre el ancho). */
+      #rotulos .rot {
+        position: absolute; left: 8%; right: 8%; top: var(--rot-y, 3%);
+        display: flex; flex-direction: column; align-items: center; gap: .45em;
+        font-family: "Inter"; color: var(--tinta); text-align: center;
+        font-size: var(--rot-txt, 44px);
+        opacity: 0; pointer-events: none;
+      }
+      #rotulos .rot img {
+        height: var(--rot-img, 106px); width: auto; display: block;
+        border-radius: 6px;
+      }
+      #rotulos .rot .linea {
+        font-weight: var(--rot-peso-txt, 800); line-height: 1.1;
+        text-transform: var(--rot-caso, uppercase); letter-spacing: .01em;
+        color: var(--rot-color, var(--tinta)); font-family: var(--rot-fuente, "Inter");
+        text-shadow: var(--rot-sombra, 0 2px 10px rgba(0,0,0,.85), 0 0 22px rgba(0,0,0,.55));
+      }
+      #rotulos .rot .linea .num { font-weight: 900; }
+      /* sobre un cielo casi blanco el amarillo no se lee: pastilla oscura suave, solo si el video lo pide */
+      #rotulos.pastilla .rot .linea { background: var(--rot-fondo, rgba(0,0,0,.38)); padding: .08em .45em; border-radius: .22em; }
+      #rotulos { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+
+      /* ---------- TOP 10: la lamina de arriba ----------
+         Todo el peso del formato esta aqui: una imagen pequena arriba y una linea de
+         texto en mayusculas debajo. La mitad de abajo se deja limpia — es lo que hace
+         que se lea como una ficha y no como un talking head con subtitulos. */
+      #subs.arriba .cue {
+        position: absolute; left: var(--safe-x); right: var(--safe-x);
+        top: var(--sub-y); transform: translateY(-50%);
+        font-family: "Inter"; font-weight: var(--sub-peso, 700);
+        font-size: var(--sub-size, 54px);
+        letter-spacing: var(--sub-track, 0.01em);
+        line-height: var(--sub-interlinea, 1.18);
+        text-transform: uppercase;
+        color: var(--tinta); text-align: center;
+        text-shadow: 0 2px 10px rgba(0,0,0,.72), 0 0 22px rgba(0,0,0,.45);
+        opacity: 0;
+      }
+      .prop.lamina { align-items: flex-start; justify-content: center; }
+      .prop.lamina img, .prop.lamina video {
+        height: var(--alto, 20%); width: auto; display: block;
+      }
+
+      /* ---------- REFLEXIVO: marco y titular fijo ----------
+         El video va enmarcado entre dos barras negras. La de arriba lleva un titular
+         que NO cambia en todo el video; la de abajo queda vacia, y ese vacio es lo
+         que da el aire de pieza pensada en vez de reel. */
+      #marco { position: absolute; inset: 0; pointer-events: none; z-index: 7; }
+      #marco .barra { position: absolute; left: 0; right: 0; background: var(--marco-fondo, #000); }
+      #marco .barra.arriba { top: 0; height: var(--marco-arriba, 16%); }
+      #marco .barra.abajo  { bottom: 0; height: var(--marco-abajo, 22%); }
+      #titular {
+        position: absolute; left: 6%; right: 6%; top: var(--titular-y, 7.5%);
+        transform: translateY(-50%);
+        font-family: "Inter"; color: var(--tinta); text-align: center;
+        line-height: 1.12; z-index: 8; pointer-events: none;
+      }
+      #titular .t1 { font-weight: var(--titular-peso, 800); font-size: var(--titular-cuerpo, 62px); }
+      #titular .t2 { font-weight: var(--titular-peso, 800); font-size: var(--titular-cuerpo2, 44px); }
+      #subs.linea .cue {
+        position: absolute; left: var(--safe-x); right: var(--safe-x);
+        top: var(--sub-y); transform: translateY(-50%);
+        font-family: "Inter"; font-weight: var(--sub-peso, 600);
+        font-size: var(--sub-size, 46px);
+        letter-spacing: var(--sub-track, -0.005em);
+        color: var(--tinta); text-align: center; white-space: nowrap;
+        text-shadow: var(--sub-halo, 0 2px 9px rgba(0,0,0,.66));
+        opacity: 0;
+      }
+      /* Editorial (ejemplo): cue de dos lineas, prefijo grotesca + palabra en serif
+         italica mas grande debajo. El prefijo se queda en la linea del subtitulo; la
+         italica cuelga debajo. */
+      #subs.linea .cue.dos { white-space: normal; display: flex; flex-direction: column; align-items: center; gap: 0;
+        transform: translateY(calc(var(--sub-size, 46px) * -1.15)); }   /* la pareja se centra en la linea del subtitulo: la italica no baja al borde */
+      #subs.linea .cue.dos .pre { font-size: var(--sub-size, 46px); line-height: 1.0; }
+      #subs.linea .cue.dos .ita {
+        font-family: var(--ita-fuente, "Acento"), serif; font-style: italic; font-weight: var(--ita-peso, 600);
+        font-size: var(--ita-size, 131px); line-height: 0.95; letter-spacing: var(--ita-track, -0.06em);
+        margin-top: -0.04em; white-space: nowrap; color: var(--tinta);
+      }
+      /* pastilla oscura suave detras del subtitulo, solo si el video lo pide (cielo blanco) */
+      #subs.linea.pastilla .cue { background: var(--sub-fondo, rgba(0,0,0,.35)); padding: .06em .4em; border-radius: .2em; }
+      #subs.linea.pastilla .cue.dos { padding: .06em .5em .12em; }
+      /* el acento del reflexivo: amarillo y en CURSIVA, sin halo. Discreto. */
+      #subs.linea .cue em, #subs.linea .cue .acento {
+        font-style: italic; color: var(--ocre); font-weight: 700;
+      }
+
+      /* ---------- Props: recortes y tarjetas ----------
+         Las imagenes que ponen EN ESCENA lo que se dice. Van POR ENCIMA del plano y
+         del b-roll pero POR DEBAJO del texto: en las referencias los subtitulos
+         cruzan por delante del recorte, nunca al reves. Sin desenfoque de bordes ni
+         velo: son piezas limpias, es lo que las hace parecer parte de la escena y no
+         un adorno pegado. */
+      .prop {
+        /* La caja ocupa el cuadro entero y la imagen se coloca dentro con flex. Asi
+           el `transform` que anima GSAP queda libre: con `translateX(-50%)` puesto en
+           el CSS para centrar, la primera tween lo borraba y la pieza saltaba de
+           sitio. */
+        position: absolute; inset: 0; opacity: 0; z-index: 3;
+        display: flex; pointer-events: none; will-change: transform, opacity;
+      }
+      .prop img, .prop video { display: block; width: auto; height: var(--alto, 46%); }
+      .prop.tarjeta img, .prop.tarjeta video {
+        border-radius: 22px;
+        /* filo claro finito + sombra: es lo que la despega del fondo sin recurrir a
+           un halo desenfocado */
+        box-shadow: 0 0 0 3px rgba(255,255,255,.92), 0 18px 44px rgba(0,0,0,.45);
+      }
+      /* Capturas dibujadas: notificaciones de mensaje y chats. No hay archivo, es
+         markup — asi el texto sale nitido a cualquier tamano y se escribe en espanol
+         neutro. El avatar es la inicial sobre un circulo: una cara real en una
+         notificacion recreada seria suplantar a alguien. */
+      .prop.captura { font-family: "Inter"; }
+      .prop.captura .cap-pila,
+      .prop.captura .cap-tel { height: var(--alto, 26%); display: flex; }
+      /* La pila no puede ocupar el ancho entero: en las referencias las
+         notificaciones son una columna estrecha arrimada a un lado, y a pantalla
+         completa la primera se salia por el canto. */
+      .prop.captura .cap-pila {
+        flex-direction: column; gap: 0.9%; justify-content: flex-start; width: 80%;
+      }
+      .cap-dm {
+        display: flex; align-items: center; gap: 0.22em; flex: 1;
+        background: rgba(24,24,27,.94); border-radius: 999px;
+        /* el hueco en em, no en px: si va en px el avatar se come el mensaje
+           en cuanto la tarjeta cambia de tamano y el texto sale cortado */
+        padding: 0 0.26em 0 0.16em; min-width: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,.45);
+      }
+      /* OJO con el `em` de aqui: el ancho se resuelve contra el cuerpo del PROPIO
+         elemento, no contra el del padre. Con font-size 0.34em, un ancho de 2em son
+         0.68 del alto de la fila — que es lo que se busca. Puesto como 0.78em salia
+         a un cuarto de fila y el avatar se quedaba colgando fuera de la pastilla. */
+      .cap-av {
+        width: 2em; height: 2em; border-radius: 50%; flex: none;
+        background: linear-gradient(135deg, #f0517a, #f7a83c);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-weight: 800; font-size: 0.34em;
+      }
+      .cap-av.chico { width: 1.9em; height: 1.9em; }
+      .cap-tx { min-width: 0; }
+      .cap-de   { color: #fff; font-weight: 700; font-size: 0.30em; line-height: 1.25; }
+      .cap-msg  { color: #d6d6da; font-weight: 500; font-size: 0.26em; line-height: 1.3;
+                  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .cap-hora { color: #8b8b91; font-weight: 500; font-size: 0.22em; line-height: 1.3; }
+      .cap-punto { width: 0.16em; height: 0.16em; border-radius: 50%;
+                   background: #ff3b5c; margin-left: auto; flex: none; }
+      /* chat */
+      .cap-tel {
+        flex-direction: column; aspect-ratio: 9 / 15;
+        background: #0f1614; border-radius: 26px; overflow: hidden;
+        box-shadow: 0 0 0 3px rgba(255,255,255,.9), 0 18px 44px rgba(0,0,0,.5);
+      }
+      .cap-cab { display: flex; align-items: center; gap: 10px;
+                 padding: 3.4% 5%; background: #1d2b26; }
+      .cap-est { color: #9fd6c2; font-size: 0.20em; font-weight: 500; }
+      .cap-cuerpo { flex: 1; display: flex; flex-direction: column; gap: 2.2%;
+                    padding: 4% 5%; justify-content: flex-end; }
+      .cap-bur { max-width: 78%; border-radius: 14px; padding: 2.6% 4%;
+                 color: #eaf3ef; font-size: 0.24em; font-weight: 500; line-height: 1.35;
+                 position: relative; }
+      .cap-bur.yo   { align-self: flex-end;   background: #14614a; }
+      .cap-bur.otro { align-self: flex-start; background: #26312d; }
+      .cap-h { display: block; text-align: right; color: #9aa5a0;
+               font-size: 0.72em; margin-top: 2px; }
+
+      /* ---------- La OFERTA: lo que se vende, en pantalla ----------
+         El ultimo tercio de las referencias se construye alrededor de esto: la clase
+         o el ebook aparece grande, centrado abajo, con un resplandor calido detras y
+         una etiqueta encima — "ESTE" en cursiva pequena y "EBOOK" en bold. Se queda
+         siete u ocho segundos, que es el momento en que se decide la conversion. */
+      /* OJO con el eje: en una columna, `align-items` es el eje HORIZONTAL y
+         `justify-content` el vertical. Puesto al reves, la tarjeta salia pegada
+         arriba y a la derecha, con la etiqueta fuera de cuadro. */
+      /* La imagen del recurso va JUSTO DEBAJO del subtitulo, no en el suelo: por
+         debajo del 80% de la altura ya no se ve bien.
+         OJO: un `padding` en % se calcula sobre el ANCHO, no sobre el alto. Puesto
+         como padding-top: 72% la imagen se iba al 40% de altura y encima diminuta.
+         Se coloca con `top`, que si va sobre el alto. */
+      .prop.oferta.abajo, .prop.oferta {
+        display: block;
+      }
+      .prop.oferta .of-caja {
+        position: absolute; top: var(--of-y, 70%); left: 50%;
+        transform: translateX(-50%);
+        height: var(--alto, 20%);
+      }
+      .prop.oferta .of-etq {
+        font-family: "Inter"; text-align: center; color: var(--tinta);
+        text-shadow: var(--glow); margin-bottom: 0.35em;
+      }
+      .prop.oferta .of-arriba {
+        font-style: italic; font-weight: 600; font-size: 0.42em; opacity: .92;
+        letter-spacing: 0.02em;
+      }
+      .prop.oferta .of-abajo {
+        font-weight: 800; font-size: 0.72em; letter-spacing: -0.01em;
+        margin-top: -0.12em;
+      }
+      /* La caja necesita ALTURA propia: un `height` en % dentro de un padre sin
+         altura definida se ignora, y la imagen salia a tamano natural — 1080 px de
+         alto desbordando por arriba. */
+
+      /* el resplandor: es lo que despega el producto del fondo sin recortarlo */
+      .prop.oferta .of-caja::before {
+        content: ""; position: absolute; inset: -14% -10%;
+        background: radial-gradient(closest-side, var(--of-luz, rgba(255,92,48,.85)),
+                                    rgba(255,92,48,0) 72%);
+        filter: blur(26px); z-index: -1;
+      }
+      .prop.oferta img, .prop.oferta video {
+        height: 100%; width: auto; display: block;
+        border-radius: 10px;
+      }
+
+      .prop.abajo      { align-items: flex-end;   justify-content: center; }
+      .prop.abajo-izq  { align-items: flex-end;   justify-content: flex-start; }
+      .prop.abajo-der  { align-items: flex-end;   justify-content: flex-end; }
+      .prop.izq        { align-items: center;     justify-content: flex-start; padding-left: 2%; }
+      .prop.der        { align-items: center;     justify-content: flex-end;   padding-right: 2%; }
+      .prop.arriba     { align-items: flex-start; justify-content: center;    padding-top: 3%; }
+      .prop.arriba-izq { align-items: flex-start; justify-content: flex-start; padding: 7% 0 0 4%; }
+      .prop.arriba-der { align-items: flex-start; justify-content: flex-end;   padding: 7% 4% 0 0; }
+
+      /* ---------- Subtitulos en DOS LINEAS (formato impacto) ----------
+         Copiado de las referencias: no hay bloque de tres registros ni serifa.
+         Los subtitulos van EN PAREJAS — la entradilla pequena arriba y las
+         palabras clave grandes debajo — y las dos lineas se van juntas. Todo en
+         la misma sans (Inter), que es lo que pidio el usuario.
+         Medido sobre 'y es el de / las preguntas': 82px arriba, 106px abajo. */
+      #subs.dos .par {
+        position: absolute; left: 0; right: 0; top: var(--sub-y);
+        transform: translateY(-50%);
+        opacity: 0;
+      }
+      /* Caja interior: es la que viaja cuando la palabra del CTA se queda fija. El
+         centrado de .par se hace con `transform`, asi que animar la `y` de .par le
+         borraria el translateY y daria un salto. */
+      #subs.dos .par-mov {
+        display: flex; flex-direction: column; align-items: center;
+        gap: 0; text-align: center;
+      }
+      #subs.dos .clave span { display: inline-block; white-space: pre; }
+
+      /* una palabra sola, y la del CTA, se pintan por encima del cuerpo normal */
+      #subs.dos .clave.suelta { font-size: calc(var(--sub-clave, 106px) * var(--sub-suelta, 1.22)); }
+      #subs.dos .clave.es-cta { letter-spacing: 0.01em; }
+      /* El amarillo tiene MENOS luminancia que el blanco: medido en el render, el
+         nucleo del glifo daba 197 contra 255 del blanco — un 26% mas oscuro. Puesto
+         solo con el color, la palabra acentuada llamaba MENOS que el texto normal,
+         justo lo contrario de lo que se busca. Se compensa con halo propio del mismo
+         amarillo: no sube la luminancia del glifo, pero enciende el area alrededor y
+         es lo que hace que el ojo se vaya ahi. */
+      #subs.dos .clave span.acento,
+      #subs.dos .clave span.cta,
+      #subs.dos .clave.acento,
+      #subs.dos .clave.cta {
+        color: var(--ocre);
+        text-shadow:
+          0 0 0.10em var(--ocre),
+          0 0 0.26em rgba(255, 222, 33, .55),
+          0 2px 10px rgba(0, 0, 0, .55);
+      }
+      #subs.dos .lead, #subs.dos .clave {
+        font-family: "Inter"; letter-spacing: var(--sub-track, -0.02em);
+        line-height: var(--sub-interlinea, 1.06);
+        max-width: 100%;   /* el margen ya lo pone #subs; restarlo dos veces achica */
+        /* NUNCA se parte sola. Si el navegador puede partir la linea, el ajuste de
+           cuerpo deja de servir: mide un ancho ya recortado por la propia caja y
+           cree que cabe cuando en realidad se ha partido en dos renglones. Con
+           nowrap el ancho que se mide es el de verdad y el bucle encoge hasta que
+           entra. Es lo mismo que hace el subtitulo normal desde el principio. */
+        white-space: nowrap;
+        text-shadow: var(--glow);
+      }
+      #subs.dos .lead {
+        font-size: var(--sub-lead, 82px); font-weight: var(--sub-peso-lead, 700);
+        color: var(--tinta); opacity: var(--sub-op-lead, 0.82);
+      }
+      #subs.dos .clave {
+        font-size: var(--sub-clave, 106px); font-weight: var(--sub-peso-clave, 800);
+        color: var(--tinta);
+        /* Las dos lineas casi se tocan. Con el interlineado normal quedaba un hueco
+           del doble del alto de la letra y las dos lineas se leian como dos cosas
+           separadas, no como un bloque. Medido en las referencias: el hueco entre
+           las tintas es un 20% del alto de la letra. */
+        margin-top: calc(-1 * var(--sub-pegado, 0.20) * 1em);
+      }
+      /* UN SOLO acento de color, amarillo, tanto para la palabra de enfasis como para
+         la del CTA. Las referencias usan rojo y ambar por separado, pero el rojo se
+         apaga contra la camisa negra y el fondo oscuro: el amarillo llama mas. */
+
+
+      /* ---------- Subtitulos ---------- */
+      #subs {
+        position: absolute; left: var(--safe-x); right: var(--safe-x);
+        top: var(--sub-y); transform: translateY(-50%);
+        text-align: center; pointer-events: none;
+      }
+      #subs .cue {
+        position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+        /* el subtitulo normal es Inter Regular y SOLO blanco. Sin excepciones. */
+        font-size: var(--sub-size); font-weight: var(--sub-peso);
+        letter-spacing: var(--sub-track);
+        color: var(--tinta); white-space: nowrap; opacity: 0;
+        text-shadow: var(--glow);
+      }
+
+      /* ---------- Keyword: palabra por palabra, sustituye al subtitulo ---------- */
+      #keys { position: absolute; inset: 0; pointer-events: none; }
+      /* Bloque tipografico mixto, copiado de la referencia (medido en el frame 51.35s):
+         3 lineas con ratio de tamano 0.51 : 1 : 0.75, la grande manda el ancho,
+         la italica va sangrada y alineada a la derecha con ella, y las lineas
+         casi se tocan (2-4px de tinta a tinta) para que el bloque se lea como
+         una sola pieza y no como tres renglones sueltos. */
+      #keys .kw {
+        position: absolute; left: var(--safe-x); right: var(--safe-x);
+        top: var(--sub-y); transform: translateY(-50%);
+        /* el bloque animado puede acercarse mas al borde que el subtitulo normal:
+           es el elemento que tiene que dominar la pantalla */
+        left: var(--kw-margen); right: var(--kw-margen);
+        display: flex; flex-direction: column; align-items: flex-start;
+        width: fit-content; max-width: 100%; margin: 0 auto;
+        color: var(--tinta);   /* la sombra la ponen las filas, sin halo oscuro */
+        /* COLCHON. El acomodo pega cada linea al borde del bloque, y entre el vuelo
+           de la italica y lo que la caja de la fila no cuenta del glifo, la palabra
+           acababa fuera de cuadro y cortada. Este colchon la mantiene dentro sin
+           renunciar al escalonado, que es lo que le da caracter al bloque. */
+        padding-inline: var(--colchon, 90px);
+      }
+      .bloque .fila {
+        white-space: nowrap; line-height: var(--interlinea);
+        /* Halo oscuro (para despegar del fondo) MAS un brillo tenue del propio
+           color de la letra. Se usa currentColor para que el brillo sea blanco
+           sobre el texto blanco y ocre sobre el ocre, sin declararlo dos veces.
+           La opacidad se controla con color-mix: a plena opacidad emborrona. */
+        /* Brillo del propio color MAS un halo oscuro flojo. Sin el halo la letra
+           perdia fuerza contra el fondo; con el halo completo del subtitulo normal
+           se leia como borde. Este es una version aligerada y SIN el componente
+           desplazado (0 2px 4px), que era justo el que hacia efecto contorno:
+           solo desenfoque centrado, que da separacion sin dibujar un canto. */
+        text-shadow:
+          0 0 var(--luz-radio, 30px)
+            color-mix(in srgb, currentColor var(--luz, 35%), transparent),
+          var(--glow-bloque, 0 0 18px rgba(0,0,0,.30), 0 0 7px rgba(0,0,0,.34));
+      }
+      /* La linea grande va en MAYUSCULAS: el bloque de caja alta se lee mas
+         geometrico. Los registros chico y remate mantienen su caja natural,
+         asi el contraste no depende solo del tamano. */
+      .bloque .fila.chica {
+        font-family: "Inter"; font-weight: 700;
+        /* Igual que la serifa: la linea pequena NO crece cuando el bloque sube de
+           cuerpo. Solo la palabra central cambia de tamano segun lo corta que sea;
+           arriba y abajo se mantienen uniformes en todo el video, que es lo que
+           hace que los bloques se lean como un mismo sistema y no como piezas
+           sueltas de tamanos distintos. */
+        /* PROPORCIONAL a la linea grande, con suelo y techo. Estuvo fija en 56px
+           y salio mal: cuando una frase larga hacia bajar el cuerpo grande, la
+           linea de en medio acababa MAS PEQUENA que esta y que la serifa. La
+           jerarquia se invertia y el bloque perdia el sentido. El techo evita que
+           crezca de mas en frases cortas, que era el problema original. */
+        font-size: clamp(24px, calc(var(--g) * var(--r-chica, 0.42)), 62px);
+        letter-spacing: -0.015em;
+        /* se pega a la linea grande hasta casi tocarla */
+        margin-bottom: calc(var(--g) * var(--solape-chica, -0.06));
+      }
+      .bloque .fila.grande {
+        font-family: "Inter"; font-weight: 900; text-transform: uppercase;
+        font-size: var(--g); letter-spacing: -0.03em;
+      }
+      /* la italica: sangrada, pegada a la de arriba y alineada a su derecha */
+      .bloque .fila.serif {
+        font-family: "Acento", serif; font-style: italic; font-weight: 500;
+        /* Proporcional a la grande, con techo: acompana, no compite. Antes iba fija
+           en 84px y en frases largas acababa siendo la linea MAS GRANDE del bloque. */
+        font-size: clamp(30px, calc(var(--g) * var(--r-serif, 0.62)), 96px);
+        letter-spacing: var(--track-serif, -0.055em);
+        /* la italica se mete un poco POR DEBAJO de la grande: los ascendentes de
+           la serifa se cuelan en el hueco de la caja alta y el bloque se lee como
+           una sola pieza en vez de tres renglones */
+        margin-top: calc(var(--serif-px, 84px) * var(--solape) * 1.33);
+      }
+      /* la alineacion de cada registro la fija el JS segun el acomodo elegido */
+      .bloque .fila.izq { align-self: flex-start; }
+      .bloque .fila.med { align-self: center; }
+      .bloque .fila.der { align-self: flex-end; }
+      .bloque .fila.ocre { color: var(--ocre); }
+      /* Cada palabra es una pieza independiente que YA esta colocada en su sitio
+         definitivo desde el primer frame; solo se revela. Se anima opacity y
+         transform, que no afectan al layout: por eso ninguna palabra se mueve
+         nunca para hacerle hueco a otra. La frase entera se acomoda a la
+         pantalla de golpe (ver ajustar()), no palabra a palabra. */
+      /* OJO: aqui habia un segundo `#keys .kw { display:flex; flex-wrap:wrap; ... }`
+         que NO repetia flex-direction, asi que devolvia el bloque a direccion FILA.
+         Las tres lineas dejaban de apilarse y se repartian a lo ancho: con frases
+         largas cada linea llenaba su renglon y parecia correcto, pero con lineas
+         cortas se colocaban una al lado de otra y las palabras acababan pegadas a
+         los bordes o cortadas ("cada" saliendose por la derecha). El bloque es una
+         COLUMNA; quien coloca cada linea a izquierda, centro o derecha es su
+         `align-self` (las clases .izq/.med/.der de arriba). */
+      .bloque .pal { display: inline-block; opacity: 0; will-change: transform, opacity; }
+      .bloque .pal + .pal { margin-left: 0.24em; }
+      /* PALETA CERRADA: blanco por defecto, mostaza para el enfasis,
+         rojo excepcional. bin/montar.sh rechaza cualquier otro color. */
+
+
+      /* ---------- Stingers ----------
+         Tres capas: el grafico (que hace el push), el desenfoque de bordes que
+         le da profundidad, y el grano. El texto va POR ENCIMA de las tres:
+         ni se mueve ni se desenfoca. */
+      /* CAPAS. El orden del DOM no basta: el b-roll tapaba los subtitulos en los
+         diez tramos del video, sin excepcion. Se fija a mano quien va encima.
+         El b-roll es imagen de fondo y la narracion sigue corriendo por encima;
+         un motion graphic si toma la pantalla, pero trae su propio texto y
+         bin/cuadrar.py ya retira los subtitulos que caen dentro. */
+      .stinger { position: absolute; inset: 0; opacity: 0; overflow: hidden; z-index: 2; }
+      .stinger.broll { z-index: 1; }
+      #subs  { z-index: 5; }
+      #keys  { z-index: 6; }
+      #clave { z-index: 8; }
+      #flash { z-index: 9; }
+
+      .stinger .grafico {
+        position: absolute; inset: 0;
+        transform-origin: 50% 48%;   /* el push va hacia donde esta el texto */
+        will-change: transform;
+      }
+      /* Profundidad de campo: desenfoca lo que hay detras SOLO en los bordes.
+         La mascara deja el centro limpio y va cerrando hacia fuera, asi el ojo
+         se va al centro y la imagen deja de ser plana. */
+      .stinger .dof {
+        position: absolute; inset: 0; pointer-events: none;
+        backdrop-filter: blur(var(--st-blur, 16px));
+        -webkit-backdrop-filter: blur(var(--st-blur, 16px));
+        -webkit-mask-image: radial-gradient(closest-side at 50% 48%,
+          rgba(0,0,0,0) 36%, rgba(0,0,0,.5) 68%, rgba(0,0,0,1) 100%);
+                mask-image: radial-gradient(closest-side at 50% 48%,
+          rgba(0,0,0,0) 36%, rgba(0,0,0,.5) 68%, rgba(0,0,0,1) 100%);
+      }
+      /* Vineteado suave: acompana al desenfoque, no lo sustituye */
+      .stinger .vineta {
+        position: absolute; inset: 0; pointer-events: none;
+        /* muy suave: acompana al desenfoque para dar profundidad, no para
+           convertir la imagen en un ovalo negro */
+        background: radial-gradient(closest-side at 50% 48%,
+          rgba(0,0,0,0) 56%, rgba(0,0,0,.13) 84%, rgba(0,0,0,.26) 100%);
+      }
+      /* Grano de pelicula. Solo sobre el motion graphic, nunca sobre el texto. */
+      .stinger .grano {
+        position: absolute; inset: -6%; pointer-events: none;
+        opacity: var(--st-grano, 0.16); mix-blend-mode: overlay;
+        background-repeat: repeat;
+        background-image: url("data:image/svg+xml;utf8,\
+<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'>\
+<filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' seed='7'/>\
+<feColorMatrix type='saturate' values='0'/></filter>\
+<rect width='180' height='180' filter='url(%23n)'/></svg>");
+      }
+      .stinger.navy   { background: radial-gradient(120% 90% at 50% 55%, #0d2b6b 0%, #061230 55%, #02060f 100%); }
+      .stinger.rojo   { background: radial-gradient(120% 90% at 50% 55%, #7a0b14 0%, #2a0308 55%, #0b0102 100%); }
+      .stinger.negro  { background: radial-gradient(120% 90% at 50% 45%, #1a1a1e 0%, #0a0a0c 60%, #000 100%); }
+      .stinger.verde  { background: radial-gradient(120% 90% at 50% 55%, #0b4d33 0%, #042116 55%, #010806 100%); }
+
+      /* TONOS CLAROS. Para la marca los graficos van en fondo claro, no nocturno.
+         Sobre claro hay que invertir DOS cosas o no se lee nada: la tinta pasa a
+         verde oscuro, y el acento deja de ser el verde claro de los subtitulos
+         (que sobre crema desaparece) para volverse un verde profundo. El halo del
+         bloque tambien se invierte: negro alrededor de letra oscura la ensucia. */
+      .stinger.crema  { background: radial-gradient(120% 90% at 50% 48%, #fbf7ef 0%, #f0e8d8 58%, #e3d7c2 100%); }
+      .stinger.menta  { background: radial-gradient(120% 90% at 50% 48%, #f2fbf4 0%, #dcf2e2 58%, #c3e6cf 100%); }
+      .stinger.salvia { background: radial-gradient(120% 90% at 50% 48%, #f4f7f0 0%, #e2ebdb 58%, #cbd9c2 100%); }
+      .stinger.crema, .stinger.menta, .stinger.salvia {
+        --tinta: #16302a;
+        --ocre: #0f7a4c;
+        --glow-bloque: 0 0 18px rgba(255,255,255,.75), 0 0 7px rgba(255,255,255,.85);
+        --glow: 0 0 14px rgba(255,255,255,.7), 0 0 5px rgba(255,255,255,.8);
+        color: #16302a;
+      }
+      .crema .acento, .menta .acento, .salvia .acento { color: #0f7a4c; }
+      /* sobre claro, la vineta oscura del tratamiento comun ensucia el fondo */
+      .stinger.crema .vineta, .stinger.menta .vineta, .stinger.salvia .vineta { opacity: .18; }
+      .acento { color: #3f7dff; }
+      .rojo .acento  { color: #ff2f45; }
+      .verde .acento { color: #35e08a; }
+      .negro .acento { color: #f0c750; }
+
+      /* anillos concentricos */
+      .anillos { position: absolute; inset: 0; }
+      .anillos i {
+        position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+        border-radius: 50%; border: 2px solid currentColor; opacity: .55;
+        filter: drop-shadow(0 0 18px currentColor);
+      }
+      /* malla en perspectiva */
+      .malla {
+        position: absolute; inset: -12%;
+        background-image:
+          repeating-linear-gradient(to right, rgba(255,255,255,.5) 0 1.5px, transparent 1.5px 84px),
+          repeating-linear-gradient(to bottom, rgba(255,255,255,.5) 0 1.5px, transparent 1.5px 84px);
+        -webkit-mask-image: radial-gradient(58% 46% at 50% 50%, #000 55%, transparent 100%);
+                mask-image: radial-gradient(58% 46% at 50% 50%, #000 55%, transparent 100%);
+        transform: perspective(900px) rotateX(18deg) scale(1.15);
+      }
+      /* barras de datos */
+      .barras {
+        position: absolute; left: 14%; right: 14%; top: 26%; height: 30%;
+        display: flex; align-items: flex-end; gap: 26px;
+      }
+      .barras b {
+        flex: 1; border-radius: 12px 12px 0 0; background: currentColor;
+        box-shadow: 0 0 34px currentColor; opacity: .9; height: 0;
+      }
+      /* linea de pulso */
+      .pulso { position: absolute; left: 0; right: 0; top: 30%; height: 26%; }
+      .pulso svg { width: 100%; height: 100%; }
+      .pulso path {
+        fill: none; stroke: currentColor; stroke-width: 7;
+        stroke-linecap: round; stroke-linejoin: round;
+        filter: drop-shadow(0 0 16px currentColor);
+      }
+      /* flecha de tendencia */
+      .flecha { position: absolute; inset: 0; }
+      .flecha svg { width: 100%; height: 100%; }
+      .flecha path, .flecha polygon {
+        stroke: currentColor; fill: none; stroke-width: 9;
+        stroke-linecap: round; stroke-linejoin: round;
+        filter: drop-shadow(0 0 20px currentColor);
+      }
+      .flecha polygon { fill: currentColor; }
+      /* cifra gigante */
+      .cifra {
+        position: absolute; left: 0; right: 0; top: 24%;
+        text-align: center; font-size: 240px; font-weight: 900;
+        color: currentColor; letter-spacing: -0.05em;
+        filter: drop-shadow(0 0 44px currentColor);
+      }
+      /* B-roll del usuario: llena el cuadro y se recorta, nunca se deforma. */
+      .broll { position: absolute; inset: 0; overflow: hidden; }
+      /* Velo bajo el texto SOLO en b-roll. Los motion graphics son oscuros y no lo
+         necesitan, pero el material real puede venir claro y ahi el texto blanco sin
+         halo se pierde. Es un degradado, no una caja: no se lee como recuadro. */
+      /* El b-roll NO se oscurece. Antes llevaba un velo negro de arriba abajo para
+         que el subtitulo se leyera; se quita porque apagaba el material, que es lo
+         que se ha ido a buscar. Lo unico que queda alrededor es el desenfoque
+         (.dof). La legibilidad del subtitulo la sostiene su propio halo. */
+      .stinger.broll .vineta { display: none; }
+      .broll video, .broll img {
+        position: absolute; inset: 0;
+        width: 100%; height: 100%; object-fit: cover;
+      }
+
+      /* Iconos (Lucide, ISC). Son de trazo y usan currentColor, asi que heredan
+         el acento del stinger y el glow se agarra a la linea. Nunca se ponen
+         planos: llevan halo, respiracion y un desenfoque que se limpia al entrar. */
+      /* El icono y su texto se leen como UNA pieza: se agrupan en la franja
+         central en vez de irse a los extremos dejando un hueco muerto en medio.
+         Las alturas caen cerca de las lineas de tercio (33% y 66%). */
+      .icono { position: absolute; left: 0; right: 0; display: grid; place-items: center; }
+      .icono.arriba { top: 36%; transform: translateY(-50%); }
+      .icono.medio  { top: 48%; transform: translateY(-50%); }
+      .icono.abajo  { top: 64%; transform: translateY(-50%); }
+
+      /* --- composiciones de icono: que no siempre entre igual --- */
+      /* asomado: enorme y cortado por un lado, solo se ve la mitad */
+      /* asomado: se sale por un lado, pero poco: cortar medio icono lo vuelve
+         una mancha sin forma. Un tercio fuera basta para que se lea "asomado". */
+      .icono.asomado-izq { left: -13%; right: auto; width: 62%; }
+      .icono.asomado-der { right: -13%; left: auto; width: 62%; }
+      .icono.asomado-izq svg, .icono.asomado-der svg { width: 100%; height: auto; }
+      /* inclinado: fuera del eje, apoyado a un lado */
+      .icono.inclinado { transform: translateY(-50%) rotate(-13deg); }
+      .icono.inclinado.der { left: 18%; right: -10%; }
+      .icono.inclinado.izq { left: -10%; right: 18%; }
+      /* patron: una retícula tenue detras y el icono grande delante */
+      .patron {
+        display: grid; grid-template-columns: repeat(5, 1fr);
+        align-content: center; justify-items: center; gap: 5% 2%;
+        opacity: .13; pointer-events: none;
+      }
+      .patron svg { width: 118px; height: 118px; stroke: currentColor; stroke-width: 1.6; }
+
+      /* BANDA UTIL: la pantalla en 6 partes; los 4 sextos del medio (16.7%-83.3%)
+         son lo que la gente ve de verdad. El sexto de arriba lo tapa la lupa de
+         IG/TikTok y el de abajo el nombre y la descripcion. Ninguna pieza grafica
+         puede tener su masa fuera de esa banda. */
+      .duo, .esquinas, .patron {
+        position: absolute;
+        /* el orden importa: `inset` despues de top/bottom los anulaba */
+        left: 0; right: 0;
+        top: var(--banda, 17%); bottom: var(--banda, 17%);
+      }
+
+      /* duo: dos iconos, uno grande a un lado y otro menor al contrario, girados
+         en sentidos opuestos. Llena el ancho sin que el ojo lo lea como simetria. */
+      .duo span {
+        position: absolute; display: block;
+        filter: drop-shadow(0 0 30px currentColor) drop-shadow(0 0 80px currentColor);
+      }
+      .duo span svg { stroke: currentColor; stroke-width: 1.25; width: 100%; height: auto; }
+      .duo .uno { left: -5%; top: 1%;    width: 50%; transform: rotate(-14deg); }
+      .duo .dos { right: -3%; bottom: 1%; width: 37%; transform: rotate(11deg); opacity: .72; }
+
+      /* esquinas: tres iconos cortados por los bordes; el espacio deja de estar
+         vacio sin que ninguno compita con el texto del centro */
+      .esquinas span {
+        position: absolute; display: block; opacity: .55;
+        filter: drop-shadow(0 0 26px currentColor);
+      }
+      .esquinas span svg { stroke: currentColor; stroke-width: 1.2; width: 100%; height: auto; }
+      .esquinas .a { left: -7%; top: 0;      width: 42%; transform: rotate(-18deg); }
+      .esquinas .b { right: -5%; top: 30%;   width: 34%; transform: rotate(14deg); }
+      .esquinas .c { left: 15%; bottom: 0;   width: 38%; transform: rotate(8deg); opacity: .4; }
+      .icono svg {
+        width: var(--ic-tam, 470px); height: var(--ic-tam, 470px);
+        stroke: currentColor; stroke-width: 1.35;   /* mas fino: a este tamano el 2 pesa */
+        filter: drop-shadow(0 0 26px currentColor) drop-shadow(0 0 70px currentColor);
+      }
+      /* halo detras del icono, para que no flote sobre el fondo */
+      .icono .halo {
+        position: absolute; width: var(--ic-halo, 700px); height: var(--ic-halo, 700px);
+        border-radius: 50%; background: radial-gradient(circle, currentColor 0%, transparent 62%);
+        opacity: .20;
+      }
+
+      /* orbe: objeto en la mitad de ARRIBA */
+      .orbe { position: absolute; inset: 0; }
+      .orbe i {
+        position: absolute; left: 50%; top: 30%; transform: translate(-50%,-50%);
+        border-radius: 50%; display: block;
+      }
+      .orbe i:first-child {
+        width: 300px; height: 300px;
+        background: radial-gradient(circle at 38% 34%, #fff, currentColor 46%, transparent 72%);
+        filter: drop-shadow(0 0 60px currentColor);
+      }
+      .orbe i:last-child {
+        width: 520px; height: 520px; border: 2px solid currentColor; opacity: .4;
+        filter: drop-shadow(0 0 24px currentColor);
+      }
+      /* ondas: objeto en la mitad de ABAJO */
+      .ondas { position: absolute; left: 0; right: 0; bottom: 0; height: 52%; }
+      .ondas svg { width: 100%; height: 100%; }
+      .ondas path { fill: currentColor; opacity: .30; }
+      .ondas path:last-child { opacity: .55; }
+
+      /* franjas de alerta */
+      .alerta {
+        position: absolute; left: -20%; right: -20%; top: 22%; height: 34%;
+        background: repeating-linear-gradient(-45deg,
+          currentColor 0 46px, transparent 46px 92px);
+        opacity: .32;
+      }
+
+      /* badge numerado */
+      .badge {
+        position: absolute; left: 50%; top: 13%; transform: translateX(-50%);
+        width: 156px; height: 156px; border-radius: 36px;
+        display: grid; place-items: center;
+        background: linear-gradient(160deg, #ffd400, #8a6a00);
+        box-shadow: 0 0 60px rgba(255,212,0,.55), inset 0 0 0 4px rgba(255,255,255,.85);
+        font-size: 96px; font-weight: 900; color: #fff;
+        text-shadow: 0 4px 14px rgba(0,0,0,.5);
+      }
+      /* El texto del stinger usa el MISMO bloque que las frases principales.
+         Lo unico que cambia es donde se coloca, y eso lo decide donde esta el
+         objeto del grafico:
+           arriba (26%) -> el objeto ocupa la mitad de abajo
+           medio  (50%) -> no hay objeto principal (una planicie, un fondo)
+           abajo  (72%) -> el objeto ocupa la mitad de arriba
+         26% y 72% estan elegidos para no meterse ni en la barra de busqueda de
+         IG/TikTok (arriba) ni en el nombre y la descripcion (abajo). */
+      .stinger .texto {
+        position: absolute; left: var(--kw-margen); right: var(--kw-margen);
+        display: flex; flex-direction: column; align-items: flex-start;
+        width: fit-content; max-width: 100%; margin: 0 auto;
+        transform: translateY(-50%);
+        color: var(--tinta);
+      }
+      /* Alturas pensadas para que el par icono+texto quede agrupado en la franja
+         central, cerca de las lineas de tercio (33% / 66%), y no repartido entre
+         los dos extremos con un vacio en medio. */
+      .stinger .texto.arriba { top: 38%; }
+      .stinger .texto.medio  { top: 50%; }
+      .stinger .texto.abajo  { top: 63%; }
+      /* con icono asomado por un lado, el texto se centra: el icono ya rompe la
+         simetria horizontalmente, no hace falta romperla tambien en vertical */
+      .stinger .texto.junto  { top: 55%; }
+
+      /* ---------- Lista acumulativa (formato la referencia) ---------- */
+      #banner {
+        position: absolute; left: var(--safe-x); right: var(--safe-x); top: 5.5%;
+        text-align: center; opacity: 0;
+      }
+      #banner .l1 {
+        font-size: 62px; font-weight: 900; color: #fff; text-transform: uppercase;
+        -webkit-text-stroke: 9px #000; paint-order: stroke fill;
+      }
+      #banner .l2 {
+        font-size: 46px; font-weight: 700; font-style: italic; color: #fff;
+        -webkit-text-stroke: 8px #000; paint-order: stroke fill; margin-top: 6px;
+      }
+      #lista {
+        position: absolute; left: var(--safe-x); right: 20%; bottom: 12%;
+        display: flex; flex-direction: column-reverse; gap: 30px;
+      }
+      #lista .item { display: flex; align-items: flex-start; gap: 14px; opacity: 0; }
+      #lista .num {
+        font-size: 74px; font-weight: 900; color: #fff; line-height: .95;
+        -webkit-text-stroke: 9px #000; paint-order: stroke fill;
+      }
+      #lista .cuerpo { padding-top: 6px; }
+      #lista .tit {
+        font-size: 54px; font-weight: 900; color: var(--ocre); text-transform: uppercase;
+        -webkit-text-stroke: 9px #000; paint-order: stroke fill; line-height: 1.05;
+      }
+      #lista .sub {
+        font-size: 38px; font-weight: 600; font-style: italic; color: #fff; margin-top: 2px;
+        -webkit-text-stroke: 7px #000; paint-order: stroke fill;
+      }
+
+      /* PALABRA CLAVE DEL CTA: la que el espectador tiene que recordar ("comenta X").
+         Se fija arriba, dentro de la banda util pero por encima de la cabeza, y se
+         queda hasta el final. Lleva pastilla oscura detras para que se lea sobre
+         cualquier fondo sin depender del contraste del video. */
+      /* EL NUMERO DEL PUNTO. En un video de lista el espectador tiene que saber en
+         que punto va sin reconstruirlo del audio. Aparece arriba cuando se dice y se
+         queda hasta el punto siguiente. Va mas arriba que la palabra del CTA para no
+         pelearse con ella si coinciden. */
+      #numero {
+        /* A la altura de la palabra del CTA, no mas arriba: por encima del 18% esta
+           la lupa de busqueda de Instagram y TikTok y el numero se pierde ahi. */
+        position: absolute; left: 0; right: 0; top: 20.5%;
+        transform: translateY(-50%);
+        display: flex; justify-content: center; opacity: 0; pointer-events: none;
+        z-index: 8;
+      }
+      #numero span {
+        font-family: "Inter"; font-weight: 900; font-size: 150px; line-height: 1;
+        letter-spacing: -0.05em; color: var(--ocre);
+        padding: 0.02em 0.20em 0.10em;
+        border-radius: 0.16em;
+        background: rgba(0,0,0,.34);
+        text-shadow: var(--glow);
+      }
+
+      #clave {
+        position: absolute; left: 0; right: 0; top: 20.5%;
+        transform: translateY(-50%);
+        display: flex; justify-content: center; opacity: 0; pointer-events: none;
+      }
+      #clave span {
+        font-family: "Inter"; font-weight: 900; font-size: var(--clave-px, 138px);
+        letter-spacing: -0.03em; color: var(--ocre); text-transform: uppercase;
+        padding: 0.06em 0.26em; border-radius: 0.20em;
+        background: rgba(0,0,0,.42);
+        box-shadow: 0 0 0 3px rgba(240,192,32,.30), 0 10px 40px rgba(0,0,0,.35);
+        text-shadow: 0 0 26px rgba(240,192,32,.45), 0 0 8px rgba(0,0,0,.5);
+      }
+
+      /* ---------- Editorial: el TITULO APILADO del gancho ----------
+         Lineas de texto literal del habla, apiladas arriba, que entran UNA A UNA y
+         alternan peso (negrita / fina). Un bloque puede sustituir al anterior. Cada
+         linea puede ir desplazada (dx en % del ancho) para el escalonado de la
+         referencia ("Estas son" a la izquierda, "las 3" corrido a la derecha). */
+      #gancho { position: absolute; left: 0; right: 0; top: 0; bottom: 0; z-index: 7; pointer-events: none; }
+      #gancho .bloque {
+        position: absolute; left: var(--gan-x, 6%); right: var(--gan-x, 6%);
+        top: var(--gan-y, 6.5%);
+        display: flex; flex-direction: column; align-items: center;
+        font-family: var(--gan-fuente, "Montserrat"); color: var(--gan-color, #fff);
+        text-align: center; line-height: var(--gan-interlinea, 0.92); opacity: 0;
+        text-shadow: var(--gan-sombra, none);
+      }
+      #gancho .bloque.escalera, #gancho .bloque.izq { align-items: flex-start; left: var(--gan-x-izq, 9%); }
+      #gancho .bloque .ln { opacity: 0; white-space: nowrap; letter-spacing: var(--gan-track, -0.08em); }
+      #gancho .bloque .ln.negrita { font-weight: var(--gan-peso-negrita, 800); font-size: var(--gan-negrita, 116px); }
+      #gancho .bloque .ln.negrita.grande { font-size: var(--gan-negrita-grande, 141px); }
+      #gancho .bloque .ln.fina    { font-weight: var(--gan-peso-fina, 300);    font-size: var(--gan-fina, 118px); }
+      #gancho .bloque .ln.media   { font-weight: var(--gan-peso-media, 800);   font-size: var(--gan-media, 110px); }
+      #gancho .bloque .ln .cifra  { font-size: 1.22em; line-height: 0.7; vertical-align: -0.02em; display: inline-block; }   /* 'las 3', '+40': el digito fino va mas grande que su palabra, sin agrandar la caja de la linea */
+      #gancho .bloque .ln img { height: 1.05em; vertical-align: -0.18em; display: inline-block; margin-left: .18em; }
+
+      /* ---------- Editorial: la FICHA DE COLOR ----------
+         Pantalla de color liso (oliva en la referencia) con frases en serif italica
+         que se construyen linea a linea. Sustituye al subtitulo mientras dura. */
+      .stinger.color { background-color: var(--fc-fondo, #6b7a2b); visibility: hidden; }
+      .stinger.color .fc-txt {
+        position: absolute; left: 7%; right: 7%; top: var(--fc-y, 44%); transform: translateY(-50%);
+        display: flex; flex-direction: column; align-items: center; gap: .08em;
+        font-family: var(--fc-fuente, "Acento"), serif; font-style: italic;
+        color: var(--fc-tinta, #fff); text-align: center; line-height: var(--fc-interlinea, 0.88);
+        letter-spacing: var(--fc-track, -0.09em);
+      }
+      .stinger.color .fc-txt .ln { opacity: 0; font-size: var(--fc-cuerpo, 118px); font-weight: var(--fc-peso, 600); }
+      .stinger.color .fc-txt .ln.grande { font-size: var(--fc-grande, 170px); }
+
+      /* ---------- Editorial: el CTA "Comenta" + palabra ----------
+         La palabra Comenta en blanco y, debajo, la palabra clave en amarillo ENTRE
+         COMILLAS, sin pastilla ni halo de color: limpio, como la referencia. */
+      #clave.comenta { flex-direction: column; align-items: center; gap: .04em; }
+      #clave.comenta .cmt {
+        font-family: var(--cta-fuente-comenta, "Inter"); font-weight: var(--cta-peso-comenta, 600);
+        font-size: var(--cta-comenta, 100px); color: #fff; letter-spacing: -0.03em;
+        text-shadow: var(--cta-halo, 0 0 36px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.45));
+      }
+      #clave.comenta span {
+        font-family: var(--cta-fuente, "Poppins"); font-weight: var(--cta-peso, 700);
+        background: none; box-shadow: none; padding: 0; border-radius: 0; color: var(--cta-color, var(--ocre));
+        letter-spacing: 0; text-shadow: var(--cta-halo, 0 0 36px rgba(0,0,0,.55), 0 2px 10px rgba(0,0,0,.45));
+      }
+      #clave.comenta span::before { content: "\201C"; }
+      #clave.comenta span::after  { content: "\201D"; }
+
+      #flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+    </style>
+  </head>
+  <body>
+    <div
+      id="root"
+      data-composition-id="main"
+      data-start="0"
+      data-duration="{{DUR}}"
+      data-fps="30"
+      data-width="1080"
+      data-height="1920"
+    >
+      <div id="camara" class="camara">
+        <video
+          id="aroll"
+          class="clip"
+          src="aroll.mp4"
+          playsinline
+          data-has-audio="true"
+          data-start="0"
+          data-media-start="0"
+          data-duration="{{DUR}}"
+          data-volume="{{VOLVOZ}}"
+          data-track-index="0"
+        ></video>
+      </div>
+
+      <!-- El b-roll se declara AQUI en el HTML, no se inyecta por JS: HyperFrames
+           compila los clips de video del HTML inicial y un <video> creado despues
+           no queda registrado en la linea de tiempo (se renderiza en negro).
+           bin/montar.sh sustituye este marcador. -->
+      {{BROLL}}
+      {{PROPS}}
+      {{DETRAS}}
+      {{MARCO}}
+      <div id="rotulos"></div>
+      <div id="gancho"></div>
+      <div id="stingers" data-track-index="1"></div>
+
+      <div id="banner" data-track-index="2">
+        <div class="l1">"NO VAS A PERDER GRASA"</div>
+        <div class="l2">"si te sucede esto ⬇..."</div>
+      </div>
+      <div id="lista" data-track-index="2"></div>
+
+      <div id="subs" data-track-index="3"></div>
+      <div id="keys" data-track-index="4"></div>
+      <div id="clave" data-track-index="5"><span>{{CLAVE}}</span></div>
+      <div id="numero" data-track-index="5"><span></span></div>
+      <div id="flash" data-track-index="6"></div>
+
+      <!-- SFX: una sola pista pre-mezclada. Un unico <audio> en vez de N. -->
+      <audio
+        id="musica"
+        src="musica.wav"
+        data-start="0"
+        data-media-start="0"
+        data-duration="{{DUR}}"
+        data-volume="{{VOLMUS}}"
+        data-track-index="7"
+      ></audio>
+
+      <audio
+        id="sfx"
+        src="sfx.wav"
+        data-start="0"
+        data-media-start="0"
+        data-duration="{{DUR}}"
+        data-volume="{{VOLSFX}}"
+        data-track-index="6"
+      ></audio>
+    </div>
+
+    <script>
+      const CUES = window.__CUES__ || [];
+      const KEYWORDS = window.__KEYWORDS__ || [];
+      const BEATS = window.__BEATS__ || { stingers: [], listas: [] };
+      const ZOOMS = window.__ZOOMS__ || [];
+      const PARES = window.__PARES__ || [];
+      // Formato impacto: los subtitulos van en dos lineas y NO hay bloque de tres
+      // registros. Las palabras clave dejan de ser un grafico aparte y pasan a ser
+      // el color de la linea grande, que es como funcionan las referencias.
+      const MODO = ((window.__ESTILO__ || {}).subtitulo || {}).modo || "";
+      const DOS = MODO === "dos_lineas";
+      // Los otros dos formatos pintan los cues de siempre, pero colocados y vestidos
+      // de otra manera: TOP 10 arriba y en mayusculas, REFLEXIVO en una linea pequena
+      // abajo del cuadro. No hace falta un pintador nuevo, solo una clase.
+      const CLASE_SUBS = { arriba_caps: "arriba", linea: "linea" }[MODO] || "";
+      // Cuanto tarda una frase animada en irse del todo. Se declara aqui arriba
+      // porque la usan tanto el bloque de keywords como el recorte de subtitulos.
+      const SALIDA_KW = 0.16, MARGEN = 0.04;
+      const tl = gsap.timeline({ paused: true });
+
+      // Mayuscula inicial SOLO en la primera linea de todo el guion (el gancho).
+      // El resto del guion va en minusculas; la unica excepcion es la linea
+      // grande de los bloques, que va en mayusculas por CSS.
+      const INICIO = Math.min(
+        ...(CUES.length ? CUES.map((c) => c.start) : [Infinity]),
+        ...(KEYWORDS.length ? KEYWORDS.map((k) => k.at) : [Infinity]),
+        ...((BEATS.stingers || []).length ? BEATS.stingers.map((b) => b.at) : [Infinity]));
+      // Con titulo apilado del gancho, los primeros cues se quitan (ya estan escritos
+      // arriba) y el primer cue que queda NO es el arranque del guion: solo lo es lo
+      // que empieza en el frame 0.
+      const HAY_GANCHO = !!(((window.__BEATS__ || {}).gancho || {}).bloques || []).length;
+      const esArranque = (t) => HAY_GANCHO ? t < 0.05 : Math.abs(t - INICIO) < 0.001;
+      const capitalizar = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+      // Los NOMBRES PROPIOS no bajan. "Daniel" escrito "daniel" se lee como una falta,
+      // no como estilo — y en estos guiones el nombre del cliente es la prueba. Se
+      // respeta cualquier palabra que venga capitalizada y NO sea principio de frase:
+      // el transcript ya distingue "Daniel" de "Deja" porque la segunda va tras punto.
+      let _PROPIOS = null;
+      const propios = () => (_PROPIOS ||= new Set(
+        (((typeof CFG !== "undefined" && CFG.subtitulo) || {}).propios || [])
+          .map((w) => String(w).toLocaleLowerCase("es"))));
+      const bajar = (s) => String(s).split(/(\s+)/).map((w, i, a) => {
+        const limpio = w.replace(/[^\p{L}\p{N}]/gu, "");
+        if (!limpio) return w;
+        if (propios().has(limpio.toLocaleLowerCase("es"))) return w;
+        return w.toLocaleLowerCase("es");
+      }).join("");
+
+      // ============ legibilidad ============
+      // Baja el cuerpo hasta que el bloque cabe en la zona segura y no pasa del
+      // numero de lineas permitido. Con contorno, dos lineas apretadas se pisan.
+      function ajustar(el, maxLineas, cuerpoMax, cuerpoMin) {
+        const ancho = el.clientWidth;
+        for (let size = cuerpoMax; size >= cuerpoMin; size -= 4) {
+          el.style.fontSize = size + "px";
+          const lh = parseFloat(getComputedStyle(el).lineHeight) || size * 1.12;
+          const lineas = Math.max(1, Math.round(el.scrollHeight / lh));
+          // scrollWidth > clientWidth = una palabra sola no cabe ni partiendo linea
+          if (lineas <= maxLineas && el.scrollWidth <= ancho + 1) return size;
+        }
+        return cuerpoMin;
+      }
+
+      // ============ keywords: bloque tipografico, palabra por palabra ============
+      // Agrupa la frase en el bloque de 3 registros de la referencia:
+      //   chica  (Inter Bold, minusculas)  -> las palabras de enlace del principio
+      //   grande (Inter Black, mayusculas) -> el nucleo de la frase
+      //   serif  (italica de acento)       -> la coda que matiza
+      // Se puede fijar a mano con `bloque` en keywords.json; si no, se deduce.
+      const ENLACE = new Set(["a","ante","bajo","con","contra","de","desde","durante","en",
+        "entre","hacia","hasta","mediante","para","por","segun","según","sin","sobre","tras",
+        "y","e","o","u","ni","que","pero","sino","porque","aunque","si","cuando","mientras",
+        "como","donde","pues","el","la","los","las","un","una","unos","unas","lo","al","del",
+        "mi","tu","su","mis","tus","sus","este","esta","ese","esa","esos","esas","estos",
+        "estas","no","ya","se","te","me","le","les","nos","más","menos","muy","tan",
+        "es","son","era","eran"]);
+      const esEnlace = (w) => ENLACE.has(w.toLowerCase().replace(/[^\wáéíóúñ]/gi, ""));
+
+      // El nucleo son 2 palabras con contenido, no mas. "gente nueva fuera" no es
+      // una composicion: lo que se lee grande tiene que ser una unidad de sentido
+      // corta, y el resto baja al remate.
+      function agrupar(trozos) {
+        if (trozos.length <= 2) return [{ rol: "grande", palabras: trozos }];
+        let i = 0;
+        while (i < trozos.length - 1 && esEnlace(trozos[i].t) && i < 2) i++;
+        const nMax = (window.__ESTILO__ || {}).bloque?.palabras_nucleo || 2;
+        let j = i, contenido = 0;   // eslint-disable-line
+        while (j < trozos.length && contenido < nMax) {
+          if (esEnlace(trozos[j].t) && contenido > 0) break;   // el enlace abre el remate
+          if (!esEnlace(trozos[j].t)) contenido++;
+          j++;
+        }
+        // SIEMPRE tiene que haber linea pequena arriba cuando la frase da para
+        // tres registros. Si no empieza por conector, se sube la primera palabra:
+        // sin ella el bloque queda descabezado y se lee como medio bloque.
+        if (i === 0 && trozos.length >= 4) {
+          i = 1;
+          j = i; contenido = 0;
+          while (j < trozos.length && contenido < nMax) {
+            if (esEnlace(trozos[j].t) && contenido > 0) break;
+            if (!esEnlace(trozos[j].t)) contenido++;
+            j++;
+          }
+        }
+        const filas = [];
+        if (i > 0) filas.push({ rol: "chica", palabras: trozos.slice(0, i) });
+        filas.push({ rol: "grande", palabras: trozos.slice(i, j) });
+        // El remate en italica no aguanta mucho texto: con mas de cuatro palabras se
+        // pierde y ademas obliga a encoger todo el bloque. Se parte en dos lineas.
+        const resto = trozos.slice(j);
+        const maxS = (window.__ESTILO__ || {}).bloque?.serif_max_palabras || 4;
+        for (let k = 0; k < resto.length; k += maxS)
+          filas.push({ rol: "serif", palabras: resto.slice(k, k + maxS) });
+        return filas;
+      }
+
+      // El acomodo es siempre el mismo esquema (una arriba, la grande en medio,
+      // el remate abajo) pero cambiando de lado para que no se repita nunca igual.
+      const CFG = window.__ESTILO__ || {};
+      // Editorial: la altura del subtitulo se decide POR VIDEO segun donde queda
+      // la cara (bajo la barbilla si la cabeza esta arriba; sobre la cabeza si la cara
+      // ocupa la mitad baja del cuadro, como en caro/ejemplo). beats.subtitulo.y manda.
+      // ...y la sombra del titulo del gancho: la referencia va sin sombra sobre salones
+      // claros, pero sobre un cielo casi blanco el blanco plano no se lee. beats.titulo_gancho.sombra
+      if (((window.__BEATS__ || {}).titulo_gancho || {}).sombra) {
+        document.documentElement.style.setProperty("--gan-sombra", window.__BEATS__.titulo_gancho.sombra);
+      }
+      // ...y la altura del rotulo de lista y del subtitulo mientras hay rotulo, por video
+      // (con la cara abajo, el rotulo sube al 8% y el subtitulo se queda arriba).
+      if (((window.__BEATS__ || {}).rotulo || {}).y) {
+        document.documentElement.style.setProperty("--rot-y", window.__BEATS__.rotulo.y);
+      }
+      if (((window.__BEATS__ || {}).rotulo || {}).fondo) {
+        document.getElementById("rotulos").classList.add("pastilla");
+        document.documentElement.style.setProperty("--rot-fondo", window.__BEATS__.rotulo.fondo);
+      }
+      if (((window.__BEATS__ || {}).subtitulo || {}).halo) {
+        document.documentElement.style.setProperty("--sub-halo", window.__BEATS__.subtitulo.halo);
+      }
+      if (((window.__BEATS__ || {}).subtitulo || {}).fondo) {
+        document.getElementById("subs").classList.add("pastilla");
+        document.documentElement.style.setProperty("--sub-fondo", window.__BEATS__.subtitulo.fondo);
+      }
+      if (((window.__BEATS__ || {}).subtitulo || {}).y_con_rotulo) {
+        if (CFG.subtitulo) CFG.subtitulo.y_con_rotulo = window.__BEATS__.subtitulo.y_con_rotulo;
+      }
+      if (((window.__BEATS__ || {}).subtitulo || {}).y) {
+        document.documentElement.style.setProperty("--sub-y", window.__BEATS__.subtitulo.y);
+        if (CFG.subtitulo) CFG.subtitulo.y = window.__BEATS__.subtitulo.y;
+      } else if (CFG.subtitulo && CFG.subtitulo.y === "auto" && window.__SUB_Y__) {
+        // medido por video con la cara: debajo de la barbilla, dentro del area de respeto
+        document.documentElement.style.setProperty("--sub-y", window.__SUB_Y__);
+        CFG.subtitulo.y = window.__SUB_Y__;
+      }
+      const ACOMODOS = CFG.acomodos || [["izq", "izq", "der"], ["der", "der", "izq"]];
+
+      // Cada registro entra por un lado distinto: el bloque respira en vez de
+      // aparecer todo desde el mismo sitio. Recorridos cortos, nunca desde el borde.
+      const ENTRADA = CFG.entrada ||
+        { chica: { x: -34, y: 0 }, grande: { x: 0, y: 30 }, serif: { x: 38, y: 10 } };
+
+      // Constructor del bloque tipografico. Lo usan las frases principales Y el
+      // texto de los motion graphics: mismo sistema, misma lectura.
+      function construirBloque(el, trozos, opt) {
+        opt = opt || {};
+        let filas;
+        if (opt.bloque) {
+          let n = 0;
+          filas = opt.bloque.map(([texto, rol]) => {
+            const cuantas = texto.split(/\s+/).length;
+            const p = trozos.slice(n, n + cuantas); n += cuantas;
+            return { rol, palabras: p };
+          }).filter((f) => f.palabras.length);
+        } else {
+          filas = agrupar(trozos);
+        }
+        const disp0 = opt.acomodo || ACOMODOS[(opt.idx || 0) % ACOMODOS.length];
+        // La linea pequena se alinea SIEMPRE con la grande. Antes cada una tomaba su
+        // lado del acomodo y quedaban en extremos opuestos: el bloque se leia como
+        // tres piezas sueltas en vez de una. El escalonado lo sigue dando el remate.
+        const disp = [...disp0];
+        if (filas.length >= 2 && filas[0].rol === "chica") disp[0] = disp[1];
+        const acento = opt.acento || null;
+
+        const spans = [];
+        filas.forEach((f, fi) => {
+          const fila = document.createElement("div");
+          const lado = disp[Math.min(fi, disp.length - 1)];
+          const esAcento = acento === f.rol ||
+            (acento === "remate" && f.rol === "serif") ||
+            (acento === "nucleo" && f.rol === "grande");
+          fila.className = "fila " + f.rol + " " + lado + (esAcento ? " ocre" : "");
+          el.appendChild(fila);
+          f.palabras.forEach((p, pi) => {
+            const sp = document.createElement("span");
+            sp.className = "pal";
+            // minusculas siempre, salvo la primerisima palabra del guion
+            // sin puntos: en pantalla no aportan y ensucian el remate
+            const limpio = bajar(p.t).replace(/\.{2,}|…|\./g, "");
+            const primera = fi === 0 && pi === 0 && opt.arranque;
+            sp.textContent = primera ? capitalizar(limpio) : limpio;
+            sp.style.opacity = 1;
+            fila.appendChild(sp);
+            spans.push({ el: sp, at: p.at, rol: f.rol });
+          });
+        });
+
+        // el bloque COMPLETO se acomoda a la pantalla: baja el cuerpo base hasta
+        // que cabe entero. Todas las lineas escalan juntas porque van en `em`.
+        // El cuerpo no solo BAJA para caber: tambien SUBE cuando la frase es corta.
+        // Se busca el tamano mas grande que sigue cabiendo en la zona segura, asi
+        // una palabra de cinco letras llena la pantalla en vez de quedarse
+        // pequena solo porque el tamano de partida era fijo.
+        const B = CFG.bloque || {};
+        // ANCHO DE REFERENCIA: se PREGUNTA al DOM, no se da por hecho que son 1080.
+        // La pagina se maqueta a un ancho que no tiene por que coincidir con el de
+        // la composicion (aqui salian 997 para un video de 1080) y despues se escala
+        // al renderizar. Midiendo contra 1080 el margen se calculaba un 8% de mas y
+        // las lineas acababan fuera de cuadro: "cada" cortada por el borde derecho.
+        const RAIZ = document.querySelector("[data-composition-id]");
+        const W = (RAIZ && RAIZ.getBoundingClientRect().width) || 1080;
+        const tope = W * (B.ancho_max || 0.84);
+        const altoMax = opt.alto_max || B.alto_max || 620;
+        const maxG = opt.cuerpo || B.cuerpo_max || 168;
+        const minG = B.cuerpo_min || 44;
+        // El ancho se mide sobre las FILAS, no sobre el contenedor. El contenedor
+        // lleva max-width:100%, asi que su scrollWidth se queda clavado en el ancho
+        // de pantalla por muy larga que sea la frase: medido asi, el bucle creia que
+        // siempre cabia y las frases largas se salian del cuadro por los dos lados.
+        const anchoReal = () => Math.max(el.scrollWidth,
+            ...[...el.children].map((f) => f.scrollWidth));
+
+        let elegido = minG;
+        for (let g = maxG; g >= minG; g -= 3) {
+          el.style.setProperty("--g", g + "px");
+          if (anchoReal() <= tope && el.scrollHeight <= altoMax) { elegido = g; break; }
+        }
+        el.style.setProperty("--g", elegido + "px");
+
+        // Las lineas chica y serif van a tamano FIJO a proposito (asi todos los
+        // bloques se leen como un mismo sistema). Pero si la frase es larga, esas
+        // dos no encogen con --g y se salen del cuadro: el bucle de arriba baja
+        // hasta el minimo, no cabe igual, y la serifa acaba saliendose por la
+        // izquierda. Aqui se les aplica el recorte que haga falta, y SOLO cuando
+        // hace falta: un bloque normal no se entera.
+        if (anchoReal() > tope) {
+            const k = tope / anchoReal();
+            const px = (v, d) => Math.round(parseFloat(
+                getComputedStyle(document.documentElement).getPropertyValue(v) || d) * k);
+            el.style.setProperty("--chica-px", px("--chica-px", 56) + "px");
+            el.style.setProperty("--serif-px", px("--serif-px", 84) + "px");
+        }
+
+        // GUARDIA DE MARGENES. Lo anterior controla el TAMANO, pero no donde acaba
+        // cada renglon: con el acomodo a la derecha una linea corta se iba fuera de
+        // cuadro y se leia a medias ("cada" cortada por el borde). Aqui se mide la
+        // caja real de cada fila en pantalla y, si se sale, se empuja hacia dentro.
+        // Se mide, no se supone: es la unica forma de que el margen se cumpla pase
+        // lo que pase con el layout.
+        const rr = RAIZ ? RAIZ.getBoundingClientRect() : { left: 0, right: W };
+        const MARG = W * (parseFloat(B.margen) || 8) / 100;
+        [...el.children].forEach((f) => {
+          f.style.position = "relative";
+          const r = f.getBoundingClientRect();
+          const dentro = Math.max(0, (rr.left + MARG) - r.left)
+                       - Math.max(0, r.right - (rr.right - MARG));
+          if (Math.abs(dentro) > 0.5) f.style.left = Math.round(dentro) + "px";
+        });
+
+        // revelar: cada palabra ya esta en su sitio definitivo, solo se muestra
+        spans.forEach((sp) => {
+          const e = ENTRADA[sp.rol] || ENTRADA.grande;
+          gsap.set(sp.el, { opacity: 0, x: e.x, y: e.y, scale: 0.94 });
+          tl.to(sp.el, { opacity: 1, x: 0, y: 0, scale: 1,
+            duration: e.duracion || 0.30, ease: "power3.out" }, sp.at);
+        });
+        return spans;
+      }
+
+      // Una frase animada y un motion graphic no pueden convivir: el grafico ya
+      // trae su propio texto y se pintarian dos bloques a la vez. Si se solapan,
+      // manda el grafico y la frase se descarta.
+      const STG = BEATS.stingers || [];
+      // El b-roll no descarta una frase animada: va debajo de la narracion, no
+      // compite con ella. Solo los motion graphics, que traen su propio texto.
+      const chocaConGrafico = (k) =>
+        STG.filter((b) => b.tipo !== "broll")
+           .some((b) => k.at < b.at + (b.dur || 0) && k.at + (k.dur || 0) > b.at);
+      // Ni en dos lineas ni en el reflexivo se dibuja el bloque de tres registros: en
+      // el primero el texto son las parejas, en el segundo el enfasis va en cursiva
+      // dentro de la propia linea. Dibujarlo ademas seria decir dos veces lo mismo.
+      const SIN_BLOQUE = DOS || MODO === "linea";
+      const KW_VISIBLES = SIN_BLOQUE ? [] : KEYWORDS.filter((k) => !chocaConGrafico(k));
+
+      const kcont = document.getElementById("keys");
+      KW_VISIBLES.forEach((k, idx) => {
+        const el = document.createElement("div");
+        el.className = "kw bloque";
+        kcont.appendChild(el);
+
+        const trozos = k.palabras || k.text.split(/\s+/).map((t, i) => ({
+          t, at: k.at + i * (k.dur * 0.6) / Math.max(1, k.text.split(/\s+/).length),
+        }));
+
+        const spans = construirBloque(el, trozos,
+          { bloque: k.bloque, acomodo: k.acomodo, acento: k.acento, cuerpo: k.cuerpo,
+            idx, arranque: esArranque(k.at) });
+
+        // La salida NUNCA puede empezar antes de que la ultima palabra haya
+        // terminado de aparecer. Si se cruzan, las dos animan la misma opacidad y
+        // gana la que acaba mas tarde: la palabra se queda encendida PARA SIEMPRE.
+        // Paso de verdad — "comida" se quedo en pantalla veinte segundos, hasta el
+        // final del video. La duracion la recorta bin/cuadrar.py para hacer sitio al
+        // subtitulo siguiente, y en frases donde la ultima palabra entra justo al
+        // final el recorte se metia dentro de su entrada.
+        const ultima = Math.max(k.at, ...spans.map((sp) => sp.at));
+        const ENTRA_KW = 0.30;
+        const fin = Math.max(k.at + k.dur, ultima + ENTRA_KW + 0.04);
+        tl.to(spans.map((sp) => sp.el), { opacity: 0, duration: SALIDA_KW, ease: "power2.in" }, fin);
+      });
+
+      // ============ stingers ============
+      // Biblioteca de fondos. Se elige por lo que se esta diciendo, no por defecto.
+      //   anillos  expansion, algo que se propaga, alarma
+      //   malla    sistema, estructura, "como funciona"
+      //   barras   comparacion, cantidades
+      //   pulso    cuerpo, salud, urgencia
+      //   flecha   crecimiento, mejora, tendencia
+      //   cifra    una estadistica concreta
+      //   alerta   peligro, error, lo que NO hay que hacer
+      const FONDOS = {
+        anillos(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "anillos acento";
+          [520, 820, 1180, 1520].forEach((w) => {
+            const i = document.createElement("i");
+            i.style.width = i.style.height = w + "px";
+            d.appendChild(i);
+          });
+          cap.appendChild(d);
+          tl.from(d.children, { scale: 0.35, opacity: 0, duration: 0.75,
+            stagger: 0.07, ease: "power2.out" }, at);
+        },
+        malla(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "malla";
+          cap.appendChild(d);
+          tl.from(d, { scale: 1.4, opacity: 0, duration: 0.65, ease: "power2.out" }, at);
+        },
+        barras(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "barras acento";
+          const vals = b.valores || [38, 62, 45, 88, 55];
+          vals.forEach(() => d.appendChild(document.createElement("b")));
+          cap.appendChild(d);
+          vals.forEach((v, i) => {
+            tl.fromTo(d.children[i], { height: "0%" },
+              { height: v + "%", duration: 0.42, ease: "power3.out" }, at + i * 0.07);
+          });
+        },
+        pulso(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "pulso acento";
+          d.innerHTML =
+            '<svg viewBox="0 0 1080 500" preserveAspectRatio="none"><path d="M0,250 L300,250 L340,110 L390,390 L440,180 L480,250 L1080,250"/></svg>';
+          cap.appendChild(d);
+          const path = d.querySelector("path");
+          const len = path.getTotalLength();
+          gsap.set(path, { strokeDasharray: len, strokeDashoffset: len });
+          tl.to(path, { strokeDashoffset: 0, duration: 0.85, ease: "power1.inOut" }, at);
+        },
+        flecha(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "flecha acento";
+          d.innerHTML =
+            '<svg viewBox="0 0 1080 1920"><path d="M180,1180 L430,940 L640,1080 L900,700"/>' +
+            '<polygon points="900,700 780,720 880,820" stroke-width="0"/></svg>';
+          cap.appendChild(d);
+          const path = d.querySelector("path");
+          const len = path.getTotalLength();
+          gsap.set(path, { strokeDasharray: len, strokeDashoffset: len });
+          tl.to(path, { strokeDashoffset: 0, duration: 0.7, ease: "power2.out" }, at);
+          tl.from(d.querySelector("polygon"), { scale: 0, opacity: 0, duration: 0.25,
+            ease: "back.out(3)", transformOrigin: "50% 50%" }, at + 0.6);
+        },
+        cifra(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "cifra acento";
+          const destino = b.valor != null ? b.valor : 90;
+          d.textContent = "0" + (b.sufijo || "");
+          cap.appendChild(d);
+          const obj = { v: 0 };
+          tl.to(obj, {
+            v: destino, duration: 0.8, ease: "power2.out",
+            onUpdate: () => { d.textContent = Math.round(obj.v) + (b.sufijo || ""); },
+          }, at);
+          tl.from(d, { scale: 0.7, opacity: 0, duration: 0.3, ease: "back.out(2)" }, at);
+        },
+        // B-ROLL: material real del usuario (video o imagen). Recibe el MISMO
+        // tratamiento que un grafico generado —push lento, desenfoque de bordes,
+        // vineta y grano— porque eso es lo que hace que no se note el salto entre
+        // material propio y motion graphic: los dos se ven de la misma pelicula.
+        // ICONO: el grafico es un pictograma. Sirve para cualquier nicho porque
+        // la biblioteca cubre casi todo; el tratamiento es lo que lo hace cinematico.
+        icono(cap, b, at) {
+          const svg = (window.__ICONOS__ || {})[b.icono];
+          if (!svg) return;
+          // La composicion rota sola: si el icono entra siempre centrado y del
+          // mismo tamano, a la segunda vez el espectador ya sabe lo que viene.
+          const comp = b.icono_comp || COMPOS[b.__ci % COMPOS.length];
+          const d = document.createElement("div");
+          let clases = "icono acento " + (b.icono_pos || "medio");
+          if (comp.startsWith("asomado")) clases += " " + comp;
+          if (comp.startsWith("inclinado")) clases += " inclinado " + comp.split("-")[1];
+          d.className = clases;
+          d.innerHTML = (comp === "asomado-izq" || comp === "asomado-der"
+                         ? "" : "<span class='halo'></span>") + svg;
+          cap.appendChild(d);
+          if (comp === "duo" || comp === "esquinas") {
+            // el icono unico se retira: la composicion la forman las piezas
+            d.remove();
+            const g = document.createElement("div");
+            g.className = comp + " acento";
+            const piezas = comp === "duo" ? ["uno", "dos"] : ["a", "b", "c"];
+            g.innerHTML = piezas.map((c) => `<span class="${c}">${svg}</span>`).join("");
+            cap.appendChild(g);
+            g.querySelectorAll("span").forEach((sp, i) => {
+              tl.fromTo(sp,
+                { opacity: 0, scale: 0.72, filter: "blur(14px)" },
+                { opacity: i === 0 ? 1 : (comp === "duo" ? 0.72 : 0.5), scale: 1,
+                  filter: "blur(0px)", duration: 0.6, ease: "power3.out" }, at + i * 0.09);
+            });
+            return;
+          }
+          if (comp === "patron") {
+            const rej = document.createElement("div");
+            rej.className = "patron acento";
+            rej.innerHTML = svg.repeat(15);
+            cap.insertBefore(rej, d);
+            tl.fromTo(rej, { opacity: 0, scale: 1.12 },
+              { opacity: 0.13, scale: 1, duration: 0.8, ease: "power2.out" }, at);
+          }
+          const g = d.querySelector("svg");
+          const halo = d.querySelector(".halo");
+          // entra desenfocado y grande, y se asienta: lectura de lente enfocando
+          tl.fromTo(g,
+            { scale: 1.22, opacity: 0, filter: "blur(18px) drop-shadow(0 0 26px currentColor)" },
+            { scale: 1, opacity: 1, filter: "blur(0px) drop-shadow(0 0 26px currentColor)",
+              duration: 0.52, ease: "power3.out" }, at);
+          tl.fromTo(halo, { scale: 0.5, opacity: 0 },
+            { scale: 1, opacity: 0.20, duration: 0.7, ease: "power2.out" }, at);
+          // respiracion lenta: sin esto el icono se lee como un sello pegado
+          tl.to(g, { scale: 1.05, duration: (b.dur || 1.2) + 0.4, ease: "sine.inOut" }, at + 0.5);
+          tl.to(halo, { opacity: 0.30, duration: 0.9, ease: "sine.inOut", yoyo: true, repeat: 1 }, at + 0.3);
+        },
+        // objeto ARRIBA: un orbe con halo. El texto se va abajo.
+        orbe(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "orbe acento";
+          d.innerHTML = "<i></i><i></i>";
+          cap.appendChild(d);
+          tl.from(d.querySelector("i"), { scale: 0.3, opacity: 0, duration: 0.6,
+            ease: "back.out(1.7)", transformOrigin: "50% 50%" }, at);
+          tl.from(d.querySelectorAll("i")[1], { scale: 0.5, opacity: 0, duration: 0.8,
+            ease: "power2.out", transformOrigin: "50% 50%" }, at + 0.1);
+        },
+        // objeto ABAJO: ondas que suben desde el borde inferior. El texto arriba.
+        ondas(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "ondas acento";
+          d.innerHTML =
+            "<svg viewBox='0 0 1080 700' preserveAspectRatio='none'>" +
+            "<path d='M0,420 C180,300 360,540 540,420 C720,300 900,540 1080,420 L1080,700 L0,700 Z'/>" +
+            "<path d='M0,520 C200,410 380,630 560,520 C740,410 920,630 1080,520 L1080,700 L0,700 Z'/>" +
+            "</svg>";
+          cap.appendChild(d);
+          const ps = d.querySelectorAll("path");
+          tl.from(ps[0], { yPercent: 40, opacity: 0, duration: 0.7, ease: "power2.out" }, at);
+          tl.from(ps[1], { yPercent: 55, opacity: 0, duration: 0.8, ease: "power2.out" }, at + 0.08);
+        },
+        alerta(cap, b, at) {
+          const d = document.createElement("div");
+          d.className = "alerta acento";
+          cap.appendChild(d);
+          tl.fromTo(d, { x: -120, opacity: 0 },
+            { x: 0, opacity: 0.32, duration: 0.45, ease: "power2.out" }, at);
+          tl.to(d, { opacity: 0.14, duration: 0.35, repeat: 3, yoyo: true }, at + 0.45);
+        },
+      };
+
+      const scont = document.getElementById("stingers");
+      // Contador de iconos: la composicion rota por ORDEN de aparicion, no por un
+      // hash del instante. Con el hash, dos iconos podian caer en la misma
+      // composicion por casualidad y volvia a verse repetitivo.
+      const COMPOS = ["duo", "asomado-izq", "esquinas", "inclinado-der",
+                      "patron", "asomado-der", "centro", "inclinado-izq"];
+      let nIcono = 0;
+      // Transicion suave: el stinger entra con fundido cruzado y un empuje de
+      // escala, y la camara acompaña con un micro-zoom. Nada de corte seco ni
+      // flash blanco: el salto al b-roll tiene que sentirse continuo.
+      const ST = CFG.stingers || {};
+      const ENTRA = ST.entra || 0.34, SALE = ST.sale || 0.30;
+
+      (BEATS.stingers || []).forEach((b) => {
+        // el b-roll ya viene declarado en el HTML; el resto se construye aqui
+        const yaHecho = b.tipo === "broll"
+          ? document.getElementById("broll-" + b.__bi) : null;
+        const cap = yaHecho || document.createElement("div");
+        if (!yaHecho) {
+          // La ficha NO lleva tono: el tono es lo que pinta el fondo de color del
+          // stinger, y aqui el fondo tiene que ser el blanco de la propia ficha.
+          cap.className = b.tipo === "ficha" ? "stinger ficha"
+                        : b.tipo === "color" ? "stinger color"
+                                             : "stinger " + (b.tono || "navy");
+          if (b.tipo === "color" && b.fondo) cap.style.backgroundColor = b.fondo;
+          scont.appendChild(cap);
+        }
+
+        // capa 1: el grafico. Es lo unico que se mueve y lo unico que se desenfoca.
+        // La ficha no lo lleva: su fondo es el blanco liso.
+        let graf = cap.querySelector(".grafico");
+        if (!graf && b.tipo !== "ficha" && b.tipo !== "color") {
+          graf = document.createElement("div");
+          graf.className = "grafico";
+          graf.setAttribute("data-layout-allow-overflow", "");   // el push lo desborda a proposito
+          cap.appendChild(graf);
+          if (b.tipo === "icono") b.__ci = nIcono++;
+          (FONDOS[b.tipo] || FONDOS.anillos)(graf, b, b.at);
+          // capa 2 y 3: profundidad de campo, vineta y grano.
+          // El desenfoque de bordes se puede apagar por formato: en las referencias
+          // de impacto el material entra limpio y a sangre, y el halo de los bordes
+          // lo delataba como pieza pegada encima del plano.
+          const capas = b.tipo === "ficha" ? []
+            : (((CFG.broll || {}).desenfoque === false && b.tipo === "broll")
+               ? ["grano"] : ["dof", "vineta", "grano"]);
+          capas.forEach((c) => {
+            const d = document.createElement("div");
+            d.className = c;
+            cap.appendChild(d);
+          });
+        }
+
+        // La FICHA DE COLOR (editorial): pantalla de color liso con frases en
+        // serif italica que se construyen linea a linea. Mientras dura, el subtitulo
+        // normal se esconde: el texto de la ficha ES lo que se lee.
+        if (b.tipo === "color") {
+          const tx = document.createElement("div");
+          tx.className = "fc-txt";
+          if (b.tinta) tx.style.color = b.tinta;
+          const lns = (b.lineas || []).map((l) => (typeof l === "string" ? { t: l } : l));
+          const FC = CFG.ficha_color || {};
+          const cadaC = b.cada != null ? b.cada : (FC.cada != null ? FC.cada : 0.55);
+          // tamanos ALTERNADOS grande/normal por linea (referencia ejemplo), empezando en
+          // grande, salvo que el beat lo diga a mano
+          const aMano = lns.some((l) => l.grande != null);
+          lns.forEach((l, i) => {
+            const d = document.createElement("div");
+            const grande = aMano ? !!l.grande : (i % 2 === 0);
+            d.className = "ln" + (grande ? " grande" : "");
+            d.textContent = l.t || "";
+            tx.appendChild(d);
+            const t = l.at != null ? l.at : b.at + 0.1 + i * cadaC;
+            // cada linea SUBE ~130px con fade de 0.27s ease-out (medido)
+            tl.fromTo(d, { opacity: 0, y: FC.sube_px != null ? FC.sube_px : 130 },
+              { opacity: 1, y: 0, duration: FC.fade != null ? FC.fade : 0.27, ease: "power2.out" }, t);
+          });
+          cap.appendChild(tx);
+          tl.set("#subs", { opacity: 0 }, b.at);
+          tl.set("#subs", { opacity: 1 }, b.at + b.dur + 0.001);
+        }
+
+        // La FICHA no lleva ni grafico de fondo ni tratamiento: es una pantalla
+        // blanca con una frase y un simbolo. Se dibuja aparte.
+        if (b.tipo === "ficha") {
+          const tx = document.createElement("div");
+          tx.className = "fi-txt";
+          tx.style.display = "none";   // el texto lo lleva el subtitulo, no la ficha
+          const trozos = b.palabras || (b.titular || "").split(/\s+/).filter(Boolean)
+            .map((t, i, a) => ({ t, at: b.at + 0.10 + i * (b.dur * 0.45) / Math.max(1, a.length) }));
+          const flojas = new Set((b.flojas || []).map((x) => x.toLowerCase()));
+          const sp = trozos.map((w) => {
+            const e = document.createElement("span");
+            e.className = "pal" + (flojas.has(String(w.t).toLowerCase()) ? " flojo" : "");
+            e.textContent = w.t;
+            tx.appendChild(e);
+            return { el: e, at: w.at };
+          });
+          cap.appendChild(tx);
+          if (b.foto) {
+            const fo = document.createElement("div");
+            fo.className = "fi-foto " + (b.foto_sitio || "arriba").replace("-", " ");
+            fo.innerHTML = `<img src="props/fotos/${b.foto}" alt="">`;
+            cap.appendChild(fo);
+            // Entra como una foto que se posa: menos rebote que el emoji (una cara
+            // dando botes se lee como broma, y aqui es una prueba).
+            tl.fromTo(fo.querySelector("img"),
+              { opacity: 0, scale: 0.88, y: 18 },
+              { opacity: 1, scale: 1, y: 0, duration: 0.46, ease: "power3.out" },
+              b.at + 0.04);
+            tl.to(fo.querySelector("img"),
+              { scale: 1.045, duration: Math.max(0.2, b.dur - 0.5), ease: "none" },
+              b.at + 0.5);
+          }
+          if (b.emoji) {
+            const em = document.createElement("div");
+            // `arriba` / `abajo` / `centro`, con `izq` o `der` opcional
+            em.className = "fi-emo " + (b.emoji_sitio || "arriba").replace("-", " ");
+            em.innerHTML = `<img src="props/emoji/${b.emoji}" alt="">`;
+            cap.appendChild(em);
+            tl.fromTo(em.querySelector("img"),
+              { opacity: 0, scale: 0.72, rotate: -8 },
+              { opacity: 1, scale: 1, rotate: 0, duration: 0.42, ease: "back.out(1.8)" },
+              b.at + 0.04);
+            // late despacio mientras dura: sin esto la pantalla se queda muerta
+            tl.to(em.querySelector("img"),
+              { scale: 1.06, duration: b.dur, ease: "sine.inOut" }, b.at + 0.46);
+          }
+          sp.forEach((x) => {
+            tl.fromTo(x.el, { opacity: 0, y: 18 },
+              { opacity: 1, y: 0, duration: 0.20, ease: "power3.out" }, x.at);
+          });
+        }
+
+        // push lento del grafico hacia el centro, donde esta el texto.
+        // El texto NO va dentro de .grafico, asi que ni se mueve ni se escala.
+        const Z = ST.zoom || {};
+        if (graf) tl.fromTo(graf,
+          { scale: Z.desde || 1.0 },
+          { scale: Z.hasta || 1.12, duration: b.dur + ENTRA,
+            ease: "none" }, b.at - ENTRA * 0.5);
+
+        // el desenfoque de bordes se abre al entrar: empieza mas cerrado y se
+        // limpia conforme la imagen se asienta
+        tl.fromTo(cap,
+          { "--st-blur": (Z.blur_entra || 30) + "px" },
+          { "--st-blur": (Z.blur || 16) + "px", duration: 0.9, ease: "power2.out" },
+          b.at - ENTRA * 0.5);
+        // el grano respira un poco para que no se lea como una textura pegada
+        tl.fromTo(cap.querySelector(".grano"),
+          { backgroundPosition: "0px 0px" },
+          { backgroundPosition: "180px 120px", duration: b.dur + ENTRA, ease: "none" },
+          b.at - ENTRA * 0.5);
+
+        if (b.badge != null) {
+          const bd = document.createElement("div");
+          bd.className = "badge";
+          bd.textContent = b.badge;
+          cap.appendChild(bd);
+          tl.from(bd, { scale: 0.5, opacity: 0, duration: 0.28, ease: "back.out(2.2)" }, b.at + 0.05);
+        }
+        // Donde va el texto lo decide donde esta el objeto del grafico. Se puede
+        // forzar con `pos` en beats.json.
+        const POS = CFG.posicion_texto || {
+          anillos: "abajo", malla: "medio", barras: "abajo", pulso: "abajo",
+          flecha: "arriba", cifra: "abajo", alerta: "abajo",
+          orbe: "abajo", ondas: "arriba", icono: "abajo",
+        };
+        // En el formato de dos lineas los graficos NO llevan texto: en las
+        // referencias todo lo escrito son los subtitulos, y un titular encima de la
+        // pareja deja dos textos pisandose en el mismo sitio. El grafico se queda,
+        // el texto se va.
+        if (b.titular && !DOS && b.tipo !== "ficha") {
+          const tx = document.createElement("div");
+          // Con un icono, el texto va SIEMPRE al lado contrario del simbolo:
+          // simbolo abajo -> texto arriba, simbolo arriba -> texto abajo.
+          // El texto se coloca segun DONDE ESTA EL HUECO de la composicion, no
+          // segun icono_pos: en `duo` y `esquinas` las piezas ocupan arriba y
+          // abajo, asi que el sitio libre es el centro. Atarlo a icono_pos dejaba
+          // el texto pegado a un icono teniendo el medio vacio.
+          const OPUESTO = { arriba: "abajo", abajo: "arriba", medio: "abajo" };
+          const compUsada = b.icono_comp
+            || (b.tipo === "icono" ? COMPOS[b.__ci % COMPOS.length] : "");
+          const HUECO = {                 // composicion -> donde queda sitio libre
+            duo: "medio", esquinas: "medio",
+            "asomado-izq": "junto", "asomado-der": "junto",
+          };
+          const lugar = b.pos
+            || (b.tipo === "icono"
+                ? (HUECO[compUsada] || OPUESTO[b.icono_pos || "medio"])
+                : null)
+            || POS[b.tipo] || "medio";
+          tx.className = "texto bloque " + lugar;
+          cap.appendChild(tx);
+          const pal = b.palabras || b.titular.split(/\s+/).map((t, i, a) => ({
+            t, at: b.at + 0.10 + i * (b.dur * 0.5) / Math.max(1, a.length),
+          }));
+          construirBloque(tx, pal, {
+            bloque: b.bloque, acomodo: b.acomodo, acento: b.acento,
+            cuerpo: b.cuerpo || ST.cuerpo || 96, alto_max: ST.alto_max || 420,
+            idx: Math.round(b.at * 7),
+            arranque: esArranque(b.at),
+          });
+        }
+
+        // El contenedor del b-roll tambien se revela aqui: el <video> de dentro lo
+        // reproduce HyperFrames, pero si el contenedor sigue invisible no se ve nada.
+        if (b.tipo === "ficha" || b.tipo === "color") tl.set(cap, { visibility: "visible" }, b.at - ENTRA * 0.5);
+        tl.fromTo(cap,
+          { opacity: 0, scale: 1.06 },
+          { opacity: 1, scale: 1, duration: ENTRA, ease: "power2.out" }, b.at - ENTRA * 0.5);
+        // SALIDA EN SECO, sin fundido. Un fade de salida destapa el clip de abajo
+        // justo cuando puede haber un corte, y se leen dos saltos donde deberia
+        // haber uno. Entra suave, sale de golpe.
+        tl.set(cap, { opacity: 0 }, b.at + b.dur);
+        if (b.tipo === "ficha" || b.tipo === "color") tl.set(cap, { visibility: "hidden" }, b.at + b.dur + 0.001);
+        // la camara del A-roll cede un poco mientras el stinger toma la pantalla
+        tl.to(".camara", { scale: "+=0.04", duration: ENTRA, ease: "power2.out" }, b.at - ENTRA * 0.5);
+        tl.set(".camara", { scale: "-=0.04" }, b.at + b.dur);
+      });
+
+      // ============ lista acumulativa ============
+      const bl = (BEATS.listas || [])[0];
+      if (bl) {
+        const lc = document.getElementById("lista");
+        (bl.items || []).forEach((it, i) => {
+          const d = document.createElement("div");
+          d.className = "item";
+          d.innerHTML = `<div class="num">${i + 1}.</div><div class="cuerpo">` +
+            `<div class="tit">${it.tit}</div><div class="sub">${it.sub || ""}</div></div>`;
+          lc.appendChild(d);
+        });
+        lc.querySelectorAll(".tit").forEach((e) => ajustar(e, 1, 54, 30));
+        lc.querySelectorAll(".sub").forEach((e) => ajustar(e, 1, 38, 22));
+        ajustar(document.querySelector("#banner .l1"), 2, 62, 38);
+        ajustar(document.querySelector("#banner .l2"), 1, 46, 28);
+
+        tl.to("#banner", { opacity: 1, duration: 0.2 }, bl.at);
+        tl.fromTo("#lista .item", { x: -40, opacity: 0 },
+          { x: 0, opacity: 1, duration: 0.22, stagger: 0.28, ease: "power3.out" }, bl.at + 0.1);
+        tl.to(["#banner", "#lista .item"], { opacity: 0, duration: 0.18 }, bl.at + bl.dur);
+      }
+
+      // ============ subtitulos en dos lineas (formato impacto) ============
+      // Una pareja por vez: la entradilla pequena arriba y la linea grande debajo.
+      // Las palabras de la grande entran una a una, cuando se dicen; las dos lineas
+      // se van juntas. El rojo es el enfasis y el ambar la palabra del CTA — los dos
+      // salen medidos de las referencias, no elegidos a ojo.
+      const PAREJAS_DIBUJADAS = [];
+      // Cuando la palabra del CTA se queda quieta en su renglon, las parejas que
+      // vienen despues caerian justo encima. Se apartan hacia abajo lo justo para que
+      // se lean las dos: el CTA arriba y lo que sigue debajo.
+      let CTA_QUIETO = null;
+      // Ventanas de FICHA: mientras una esta en pantalla el subtitulo se calla. La
+      // ficha ya lleva el texto (y es cita literal), asi que no se pierde nada; el
+      // subtitulo blanco sobre el blanco de la ficha no se leeria y encima ensucia
+      // el emoji.
+      const FICHAS = (BEATS.stingers || []).filter((b) => b.tipo === "ficha");
+      const enFicha = (a, b) => FICHAS.some((f) => a < f.at + f.dur && b > f.at);
+      // Ventanas en las que la OFERTA ocupa la parte de abajo. En las referencias,
+      // mientras se muestra el producto no hay subtitulo: la etiqueta ocupa su sitio.
+      // Aqui no se puede callar lo que se dice, asi que en vez de quitar el texto se
+      // sube, y el de abajo se lo queda la oferta.
+      const OFERTAS = (window.__PROPS__ || []).filter((p) => p.tipo === "oferta");
+      function pintarPares(cont) {
+        cont.classList.add("dos");
+        const CLARO = (CFG.subtitulo || {});
+        PARES.forEach((p) => {
+        // Los subtitulos TERMINAN en la palabra clave: lo que se dice despues de
+        // "comenta X" solo se oye. Asi la palabra clave se queda sola en pantalla y
+        // no compite con nada.
+        if (p.tras_cta) return;
+          const par = document.createElement("div");
+          par.className = "par";
+          const mov = document.createElement("div");
+          mov.className = "par-mov";
+          par.appendChild(mov);
+          cont.appendChild(par);
+
+          let lead = null;
+          if (p.lead) {
+            lead = document.createElement("div");
+            lead.className = "lead";
+            lead.textContent = bajarSub(p.lead, esArranque(p.at));
+            mov.appendChild(lead);
+          }
+          const clv = document.createElement("div");
+          clv.className = "clave";
+          mov.appendChild(clv);
+
+          // una palabra por span: entran de a una, al ritmo del habla
+          const spans = p.palabras.map((w, i) => {
+            const sp = document.createElement("span");
+            sp.textContent = bajarSub(w.t, esArranque(p.at) && !p.lead && i === 0) + " ";
+            if (w.ambar) {
+              sp.className = "cta";
+              // En las referencias la palabra del CTA va en MAYUSCULAS y mas grande
+              // que la linea de encima: es lo unico que el espectador tiene que
+              // recordar, y en minusculas se confunde con el resto del subtitulo.
+              sp.textContent = sp.textContent.toLocaleUpperCase("es");
+            } else if (w.acento) sp.className = "acento";
+            clv.appendChild(sp);
+            return { el: sp, at: w.at };
+          });
+          // el color lo lleva la palabra, pero si TODA la linea es la palabra
+          // marcada se pinta la linea entera (asi sale en las referencias)
+          if (spans.length === 1 && p.palabras[0].ambar) clv.classList.add("cta");
+          else if (spans.length === 1 && p.palabras[0].acento) clv.classList.add("acento");
+
+          // si la pareja cae dentro de una oferta, sube para dejarle el sitio
+          // El subtitulo NO se mueve por la oferta. Subirlo lo dejaba encima de su
+          // cara. La oferta se coloca pequena y abajo, en su hueco, y el texto se
+          // queda donde siempre.
+          const of = OFERTAS.find((o) => p.at < o.at + o.dur && p.fin > o.at);
+          if (of && of.sube_texto) {
+            const raiz = document.querySelector("[data-composition-id]");
+            const H = parseFloat((raiz && raiz.dataset.height) || 0) || 1920;
+            mov.style.transform = `translateY(${-(of.sube_texto / 100) * H}px)`;
+          }
+          PAREJAS_DIBUJADAS.push([par, lead, clv]);
+          // Una sola palabra abajo pesa mas si ademas es mas grande. "NO" en las
+          // referencias sale asi: sola, centrada y por encima del cuerpo normal.
+          if (p.palabras.length === 1) clv.classList.add("suelta");
+          if (spans.some((sp, k) => p.palabras[k].ambar)) clv.classList.add("es-cta");
+          encogerPar(par, lead, clv);
+          const spanCTA = spans.find((sp, k) => p.palabras[k].ambar);
+          if (spanCTA) fijarCTA(par, mov, lead, spans, spanCTA, p);
+
+          if (lead) {
+            tl.fromTo(lead, { opacity: 0, y: 14 },
+              { opacity: 1, y: 0, duration: 0.20, ease: "power3.out" }, p.at);
+          }
+          spans.forEach((sp) => {
+            tl.fromTo(sp.el, { opacity: 0, y: 16 },
+              { opacity: 1, y: 0, duration: 0.18, ease: "power3.out" }, sp.at);
+          });
+          // La salida no puede empezar antes de que la ultima palabra haya acabado
+          // de entrar: si se cruzan, las dos animan la misma opacidad, gana la que
+          // acaba mas tarde y la pareja se queda encendida para siempre.
+          // Y la pareja se apaga ANTES de que entre la siguiente: dos parejas a la
+          // vez en el mismo sitio se pisan y no se lee ninguna.
+          const ultima = Math.max(p.at, ...spans.map((sp) => sp.at));
+          const SALE = 0.12;
+          const salida = Math.max(p.fin - SALE, ultima + 0.18 + 0.02);
+          // Sobre la ficha el subtitulo NO se calla: se pinta oscuro. Callarlo se
+          // comia las palabras que la ficha no decia.
+          //
+          // Y el negro dura EXACTAMENTE lo que dura el fondo claro. Con una clase
+          // puesta a toda la pareja, el trozo que se salia de la ficha quedaba negro
+          // sobre el plano oscuro y no habia quien lo leyera.
+          FICHAS.filter((f) => p.at < f.at + f.dur && p.fin > f.at).forEach((f) => {
+            const oscuro = { color: "#14141a",
+              textShadow: "0 2px 10px rgba(255,255,255,.85), 0 0 20px rgba(255,255,255,.7)" };
+            const claro = { color: "", textShadow: "" };
+            // Las palabras con acento TAMBIEN van en negro sobre la ficha: el amarillo
+            // sobre blanco no se lee. Tienen su propio color por CSS, asi que hay que
+            // pisarlo a proposito, y devolverlo al salir.
+            const acentos = [...clv.querySelectorAll("span.acento, span.cta")];
+            const donde = [lead, clv, ...acentos].filter(Boolean);
+            tl.set(donde, oscuro, Math.max(f.at, p.at));
+            tl.set(donde, claro, Math.min(f.at + f.dur, p.fin));
+            // El texto se mueve CON el emoji: si el emoji va arriba, el texto baja al
+            // 62%; si va abajo, el texto sube al 38%. Los dos dentro de la banda y con
+            // aire entre ellos. Se calcula sobre la ALTURA de la composicion.
+            const raiz = document.querySelector("[data-composition-id]");
+            const H = parseFloat((raiz && raiz.dataset.height) || 0) || 1920;
+            const base = parseFloat(String((CFG.subtitulo || {}).y || "55%")) / 100;
+            const sitio = String(f.emoji_sitio || "arriba");
+            const destino = sitio.startsWith("abajo") ? 0.38 : (sitio.startsWith("arriba") ? 0.62 : base);
+            const dy = (destino - base) * H;
+            tl.set(mov, { y: dy }, Math.max(f.at, p.at));
+            tl.set(mov, { y: 0 }, Math.min(f.at + f.dur, p.fin));
+          });
+          tl.set(par, { opacity: 1 }, p.at);
+          // la pareja del CTA no se apaga: su palabra se queda hasta el final
+          if (!par.dataset.fija) {
+            tl.to(par, { opacity: 0, duration: SALE, ease: "power2.in" }, salida);
+          }
+        });
+      }
+
+      // La palabra del CTA no se va con su pareja: se queda en pantalla hasta el final
+      // para que se entienda que es LO importante. Lo demas de la pareja se apaga, y
+      // ella sola viaja despacio hasta un sitio donde no estorbe, encogiendo por el
+      // camino. Lento y con entrada y salida suaves: si va rapido se lee como un salto
+      // de montaje y se pierde justo la sensacion que se busca.
+      function fijarCTA(par, mov, lead, spans, spanCTA, p) {
+        const F = (CFG.subtitulo || {}).cta_fijo;
+        if (!F) return;
+        const raiz = document.querySelector("[data-composition-id]");
+        // El tamano sale de data-width/data-height, NO de getBoundingClientRect: ese
+        // devuelve el tamano EN PANTALLA, ya escalado por el visor, mientras que GSAP
+        // anima en pixeles de la composicion. Con el rect, el viaje salia encogido a
+        // una fraccion y la palabra se quedaba practicamente donde estaba.
+        const caja = {
+          width: parseFloat((raiz && raiz.dataset.width) || 0) || 1080,
+          height: parseFloat((raiz && raiz.dataset.height) || 0) || 1920,
+        };
+        const pct = (v, d) => (parseFloat(v) || d) / 100;
+        const destino = pct(F.y, 13);
+        const origen = pct((CFG.subtitulo || {}).y, 55);
+        const dy = (destino - origen) * caja.height;
+        const dx = pct(F.x, 0) * caja.width;
+        const esc = F.escala || 0.60;
+        // OJO: `F.duracion || 1.5` se come el cero, porque 0 es falso en JS. Con
+        // duracion 0 (que significa "no viajes, salta") volvia a poner 1.5s de viaje
+        // y la palabra se quedaba a medio camino encima del subtitulo.
+        let dur = F.duracion != null ? F.duracion : 1.5;
+        const espera = F.espera != null ? F.espera : 0.25;
+
+        const SALE = 0.12;
+        const ultima = Math.max(p.at, ...spans.map((sp) => sp.at));
+        const salida = Math.max(p.fin - SALE, ultima + 0.18 + 0.02);
+
+        // se apaga TODO menos ella
+        const resto = spans.filter((sp) => sp.el !== spanCTA.el).map((sp) => sp.el);
+        if (lead) resto.push(lead);
+        if (resto.length) {
+          tl.to(resto, { opacity: 0, duration: SALE, ease: "power2.in" }, salida);
+        }
+        // y la pareja deja de apagarse entera: la marca para que el pintado normal no
+        // le meta su propio fundido de salida
+        par.dataset.fija = "1";
+
+        // El viaje tiene que TERMINAR dentro del video. El CTA cae al final del guion,
+        // asi que un viaje de 1.5s se sale por el borde y la palabra se queda a medio
+        // camino en el ultimo fotograma.
+        const finVideo = parseFloat((raiz && raiz.dataset.duration) || 0) || Infinity;
+        const arranca = salida + SALE + espera;
+        // duracion 0 = no viaja: salta de una vez a su sitio y se queda quieta.
+        if (!dur) {
+          if (dx || dy) tl.set(mov, { x: dx, y: dy, scale: esc }, arranca);
+          else if (esc !== 1) tl.set(mov, { scale: esc }, arranca);
+          // se queda en su sitio: las parejas siguientes se apartan
+          if (!dx && !dy) CTA_QUIETO = p.fin;
+          return;
+        }
+        dur = Math.max(0.6, Math.min(dur, finVideo - arranca - 0.08));
+        // Primero se aparta del centro y despues sube. En linea recta cruzaria por
+        // encima del subtitulo siguiente y se leerian dos textos pisados; saliendo de
+        // lado, cuando pasa por la altura del renglon ya no esta en medio.
+        //
+        // Va en UNA sola animacion con dos tramos, no en dos animaciones a la vez. Dos
+        // tweens sobre el mismo elemento escriben cada uno la transformacion entera
+        // desde su propio estado de partida, y al renderizar por saltos de fotograma
+        // uno pisa al otro: paso — la palabra se apartaba de lado pero no subia.
+        tl.to(mov, {
+          keyframes: [
+            { x: dx, y: dy * 0.22, scale: 1 - (1 - esc) * 0.25,
+              duration: dur * 0.45, ease: "power2.out" },
+            { x: dx, y: dy, scale: esc,
+              duration: dur * 0.55, ease: "power2.inOut" },
+          ],
+        }, arranca);
+      }
+
+      // Minusculas salvo el arranque, igual que el resto del guion. Y sin puntos ni
+      // comas: en las referencias no hay un solo signo en pantalla — la pausa la
+      // marca el cambio de pareja, no la puntuacion. Las interrogaciones y las
+      // exclamaciones si se quedan, que ahi cambian el tono de lo que se lee.
+      function bajarSub(t, arranque) {
+        let s = bajar(t);
+        if ((CFG.subtitulo || {}).sin_puntos) s = s.replace(/[.,;:…]/g, "");
+        return arranque ? capitalizar(s) : s;
+      }
+
+      // Las dos lineas tienen que caber en la zona segura sin partir palabras. Se
+      // baja el cuerpo de LAS DOS a la vez para que no se pierda la jerarquia: la
+      // grande siempre tiene que verse mas grande que la entradilla.
+      // El ajuste se hace DOS veces: una ya, y otra cuando la fuente esta cargada.
+      // La primera pasada mide con la fuente de reserva, que es mas estrecha, y por
+      // eso creia que cabia texto que luego, ya con Inter, se salia por el borde o
+      // se partia en dos renglones. Paso de verdad: "hombre esta perfecto," llegaba
+      // hasta el canto derecho.
+      function ajustarParejas() {
+        PAREJAS_DIBUJADAS.forEach(([par, lead, clv]) => encogerPar(par, lead, clv));
+      }
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(ajustarParejas);
+      }
+
+      function encogerPar(par, lead, clv) {
+        const S = CFG.subtitulo || {};
+        let gr0 = S.cuerpo_clave || 106;
+        const pq0 = S.cuerpo_lead || 82;
+        if (clv.classList.contains("suelta")) gr0 *= S.suelta || 1.22;
+        // El ancho util lo dice la CAJA, no una cuenta: #subs ya viene metido por el
+        // margen de seguridad, asi que volver a restarlo achicaba el texto y ademas
+        // hacia creer al codigo que cabia cuando ya se estaba partiendo.
+        const raiz = document.querySelector("[data-composition-id]");
+        const W = (raiz && raiz.getBoundingClientRect().width) || 1080;
+        const tope = Math.min(par.clientWidth, W * (S.ancho_max || 0.80));
+        // Cada linea se ajusta POR SU CUENTA. Encogerlas a la vez castigaba a la
+        // entradilla por lo largo que fuera el renglon de abajo, y salia mucho mas
+        // chica de lo que sale en las referencias.
+        const cabe = (el, base) => {
+          for (let f = 1.0; f >= 0.46; f -= 0.03) {
+            el.style.fontSize = Math.round(base * f) + "px";
+            if (el.scrollWidth <= tope) break;
+          }
+          return parseFloat(el.style.fontSize);
+        };
+        const grande = cabe(clv, gr0);
+        if (!lead) return;
+        // pero la de arriba NUNCA puede alcanzar a la de abajo: si se igualan se
+        // pierde la jerarquia y el bloque deja de leerse como entradilla + remate.
+        const techo = grande * (S.ratio_lead_max || 0.85);
+        const chica = cabe(lead, pq0);
+        if (chica > techo) lead.style.fontSize = Math.round(techo) + "px";
+      }
+
+      // ============ subtitulos ============
+      // Se callan mientras hay keyword, stinger o lista: dos bloques de texto a
+      // la vez rompen la lectura.
+      // Los subtitulos llegan ya resueltos contra los bloques desde bin/cuadrar.py.
+      // Antes se recortaban aqui, en tiempo de render, y por eso se perdian
+      // palabras sin que nadie se enterara: ahora se decide en el montaje, se
+      // audita con bin/auditar.py, y esto solo dibuja.
+      // Las palabras que llevan acento salen de las keywords elegidas a mano: de cada
+      // frase, la de mas cuerpo. Mismo criterio que en el formato de impacto.
+      const norma = (t) => t.toLowerCase().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9ñ]/g, "");
+      const ENLACES_AC = new Set(["a","de","que","el","la","los","las","un","una","y","o","en",
+        "con","por","para","su","tu","mi","se","te","me","lo","al","del","es","no","si","mas"]);
+      const ACENTOS = new Set();
+      KEYWORDS.forEach((k) => {
+        const ws = (k.text || "").split(/\s+/).filter(Boolean);
+        const cand = ws.filter((w) => !ENLACES_AC.has(norma(w)));
+        const elegida = (cand.length ? cand : ws).reduce((a, b) =>
+          norma(b).length > norma(a).length ? b : a, ws[0] || "");
+        if (elegida) ACENTOS.add(norma(elegida));
+      });
+
+      const cont = document.getElementById("subs");
+      if (CLASE_SUBS) cont.classList.add(CLASE_SUBS);
+      if (DOS) pintarPares(cont);
+      (DOS ? [] : CUES).forEach((c) => {
+        const el = document.createElement("div");
+        el.className = "cue";
+        const S = CFG.subtitulo || {};
+        let txt = S.mayusculas ? c.text : (esArranque(c.start) ? capitalizar(bajar(c.text)) : bajar(c.text));
+        if (S.sin_puntos) txt = txt.replace(/[.,;:…]/g, "");
+        // En el reflexivo el enfasis no es un bloque aparte: es una palabra en
+        // CURSIVA y amarilla dentro de la propia linea. Se marca aqui, sobre el texto
+        // ya compuesto, para no tener que inventar un pintador nuevo.
+        if (S.acento_cursiva && ACENTOS.size) {
+          el.innerHTML = txt.split(/(\s+)/).map((w) => {
+            const n = norma(w);
+            return (n && ACENTOS.has(n)) ? `<em>${w}</em>` : w;
+          }).join("");
+        } else if (c.italica) {
+          // ITALICA (editorial): el prefijo en la grotesca y la palabra
+          // clave debajo en serif italica, mas grande, que SUBE con fade.
+          el.classList.add("dos");
+          const pre = document.createElement("div"); pre.className = "pre"; pre.textContent = txt;
+          const ita = document.createElement("div"); ita.className = "ita"; ita.textContent = bajar(c.italica);
+          el.appendChild(pre); el.appendChild(ita);
+          const IT = S.italica || {};
+          tl.fromTo(ita, { opacity: 0, y: IT.sube_px != null ? IT.sube_px : 225 },
+            { opacity: 1, y: 0, duration: IT.fade != null ? IT.fade : 0.27, ease: "power2.out" }, c.start);
+        } else {
+          el.textContent = txt;
+        }
+        cont.appendChild(el);
+        // Cada modo tiene su propio cuerpo y su propio numero de lineas: el de TOP 10
+        // admite dos renglones arriba, el reflexivo solo uno y mas pequeno.
+        const cuerpo = S.cuerpo || 74;
+        if (!c.italica) ajustar(el, S.lineas_max || 1, cuerpo, Math.round(cuerpo * 0.62));
+        // SIN ANIMACION. El subtitulo normal aparece y desaparece de una: no
+        // tiene entrada ni salida. Cambian cada ~0.94s, asi que un fundido en
+        // cada uno solo produce parpadeo. La animacion es de los dinamicos.
+        tl.set(el, { opacity: 1 }, c.start);
+        tl.set(el, { opacity: 0 }, c.end);
+      });
+
+      // ============ props: recortes y tarjetas ============
+      // Entran deslizando desde el borde en el que se apoyan y luego crecen muy
+      // despacio, que es lo que hace que no se lean como una calcomania. Salen en
+      // seco, sin fundido: un fundido de salida se cruza con el corte del plano y se
+      // leen dos saltos donde deberia haber uno.
+      const PROPS = window.__PROPS__ || [];
+      // Las capturas se dibujan con `em`, y `em` cuelga del cuerpo que herede la caja
+      // — que es el del documento, 16px. Salian ilegibles: tres puntitos grises donde
+      // tenia que leerse un mensaje. El cuerpo se fija AQUI, a partir del alto real que
+      // ha tomado la tarjeta, para que el texto escale con ella.
+      function cuerpoCaptura(el) {
+        const pila = el.querySelector(".cap-pila");
+        if (pila) {
+          const filas = Math.max(1, pila.querySelectorAll(".cap-dm").length);
+          el.style.fontSize = (pila.getBoundingClientRect().height / filas) + "px";
+          return;
+        }
+        const tel = el.querySelector(".cap-tel");
+        if (tel) el.style.fontSize = (tel.getBoundingClientRect().height * 0.16) + "px";
+      }
+
+      PROPS.forEach((p) => {
+        const el = document.getElementById("prop-" + p.i);
+        if (!el) return;
+        if (p.tipo === "captura") {
+          cuerpoCaptura(el);
+          // y otra vez con la fuente ya cargada, igual que las parejas
+          if (document.fonts && document.fonts.ready) {
+            document.fonts.ready.then(() => cuerpoCaptura(el));
+          }
+        }
+        const lateral = p.sitio.endsWith("-der") || p.sitio === "der" ? 1 : -1;
+        const desde = p.tipo === "tarjeta"
+          ? { x: lateral * 90, y: -40, rotate: lateral * -3, scale: 0.92 }
+          : { y: 120, scale: 0.96 };
+        const ENTRA_P = 0.34;
+        // La imagen del GANCHO no entra: ya esta puesta en el fotograma 0. Deslizando
+        // tardaba tres decimas en verse y el primer golpe de vista se perdia, que es
+        // justo lo que no puede pasar en el arranque. El resto de props si entran.
+        if (p.at <= 0.001) {
+          tl.set(el, { opacity: 1, x: 0, y: 0, rotate: 0, scale: 1 }, 0);
+        } else {
+          tl.fromTo(el, { opacity: 0, ...desde },
+            { opacity: 1, x: 0, y: 0, rotate: 0, scale: 1,
+              duration: ENTRA_P, ease: "back.out(1.6)" }, p.at);
+        }
+        // Las notificaciones caen de una en una, no las tres de golpe: asi se lee
+        // como un telefono que va sonando, que es lo que cuenta la escena.
+        const avisos = el.querySelectorAll(".cap-dm");
+        if (avisos.length > 1) {
+          avisos.forEach((a, k) => {
+            tl.fromTo(a, { opacity: 0, y: -26, scale: 0.94 },
+              { opacity: 1, y: 0, scale: 1, duration: 0.26, ease: "back.out(1.8)" },
+              p.at + k * 0.34);
+          });
+        }
+        // La OFERTA no se mueve: es una imagen de referencia, no un adorno. Moviendose
+        // se lee como un fallo. El resto de props si respiran.
+        if (p.tipo !== "oferta") {
+          tl.to(el, { scale: 1.06, duration: p.dur, ease: "none" },
+            p.at <= 0.001 ? 0 : p.at + ENTRA_P);
+        }
+        tl.set(el, { opacity: 0 }, p.at + p.dur);
+      });
+
+      // ============ lo que va DETRAS del que habla ============
+      // No se le busca un hueco libre: se le pone detras. El recorte del sujeto se
+      // pinta encima del elemento, asi que su cuerpo y sus manos pasan por delante y
+      // el elemento no le tapa nunca — pase lo que pase con sus gestos.
+      (window.__DETRAS__ || []).forEach((d) => {
+        const el = document.getElementById("detras-" + d.i);
+        if (!el) return;
+        // `visibility` ademas de `opacity`: con solo opacity el revisor de contraste
+        // sigue contando este video a pantalla completa como el fondo del texto y
+        // marca cinco fallos que no existen.
+        tl.set(el, { opacity: 1, visibility: "visible" }, d.at);
+        tl.set(el, { opacity: 0, visibility: "hidden" }, d.at + d.dur);
+      });
+
+      // ============ rotulos del TOP 10 ============
+      // El numero y el titulo del punto entran juntos y se quedan hasta el siguiente.
+      (window.__ROTULOS__ || []).forEach((r) => {
+        const el = document.createElement("div");
+        el.className = "rot";
+        const partes = [];
+        if (r.img) partes.push(`<img src="props/top10/${r.img}" alt="">`);
+        // "10 - NUNCA HAGAS X": el numero va en la MISMA linea que el texto.
+        const sep = (CFG.rotulo || {}).separador != null ? CFG.rotulo.separador : " - ";
+        // "1- Proteína", "2- Dormir Bien": Title Case como en la referencia (regla del
+        // usuario: respetar las mayusculas en la numeracion). Las particulas quedan en minuscula.
+        const PART = new Set(["de", "del", "la", "el", "los", "las", "en", "y", "a", "un", "una", "con", "por", "para", "tu", "tus", "que"]);
+        const titulo = (t) => String(t).split(/(\s+)/).map((w, i) =>
+          (/\s/.test(w) || (i > 0 && PART.has(w.toLowerCase()))) ? w : (w.charAt(0).toUpperCase() + w.slice(1))).join("");
+        const txtRot = ((CFG.rotulo || {}).titulo_case !== false) ? titulo(r.txt || "") : (r.txt || "");
+        const linea = [r.num ? `<span class="num">${r.num}</span>${sep}` : "", txtRot].join("");
+        if (linea.trim()) partes.push(`<div class="linea">${linea}</div>`);
+        el.innerHTML = partes.join("");
+        document.getElementById("rotulos").appendChild(el);
+        // como mucho dos renglones: un titulo largo baja su cuerpo hasta caber
+        const lineaEl = el.querySelector(".linea");
+        if (lineaEl) {
+          const cuerpoRot = parseFloat(getComputedStyle(lineaEl).fontSize) || 100;
+          const encajarRot = () => ajustar(lineaEl, (CFG.rotulo || {}).lineas_max || 2, cuerpoRot, Math.round(cuerpoRot * 0.55));
+          encajarRot();
+          if (document.fonts && document.fonts.ready) document.fonts.ready.then(encajarRot);
+        }
+        tl.fromTo(el, { opacity: 0, y: -18 },
+          { opacity: 1, y: 0, duration: 0.26, ease: "power3.out" }, r.at);
+        tl.to(el, { opacity: 0, duration: 0.16, ease: "power2.in" }, r.at + r.dur);
+        // Editorial: mientras hay un titulo de lista arriba, el subtitulo BAJA
+        // (en la referencia pasa del 60% al 78%): dos textos no comparten la banda.
+        const yRot = (CFG.subtitulo || {}).y_con_rotulo;
+        if (yRot) {
+          tl.set(document.documentElement, { "--sub-y": yRot }, r.at);
+          tl.set(document.documentElement, { "--sub-y": (CFG.subtitulo || {}).y }, r.at + r.dur);
+        }
+      });
+
+      // ============ gancho de apertura ============
+      // Los tres ganchos caen juntos en el primer segundo: el VISUAL es este zoom
+      // out (el video abre muy cerca de ella y se abre de golpe), el AUDITIVO es el
+      // whoosh que sfx.py deja en el 0, y el de TEXTO es la primera frase animada.
+      // Si el zoom durase mas de un segundo dejaria de ser un golpe y se leeria como
+      // un movimiento de camara cualquiera.
+      const ARR = CFG.arranque || {};
+      // PRIMER FRAME (formato editorial): el video abre en un PRIMER PLANO de la
+      // cara con el titulo ya puesto, aguanta `dur` y CORTA en seco al plano abierto
+      // (o pasa por un destello blanco). Es la primera imagen que ve el pulgar: una
+      // cara grande, no un salon. Medido en las 6 referencias: 0.25s de primer plano.
+      if (ARR.modo === "primer_frame") {
+        const foco = ARR.foco || "50% 32%";
+        tl.set(".camara", { scale: ARR.escala || 2.0, transformOrigin: foco }, 0);
+        const corte = ARR.dur != null ? ARR.dur : 0.25;
+        tl.set(".camara", { scale: 1.0, transformOrigin: "50% 50%" }, corte);
+        if (ARR.destello) {
+          // el destello arranca EN el corte: tapa el salto y lo convierte en un golpe de luz
+          tl.fromTo("#flash", { opacity: ARR.destello },
+            { opacity: 0, duration: ARR.destello_dur || 0.22, ease: "power2.out" }, corte);
+        }
+      } else if (ARR.activo) {
+        // Editorial: el zoom out arranca ANCLADO EN LA CARA (foco auto = bin/foco.py)
+        // y dura 4-6 frames; desde el centro geometrico, a 2.4x la cabeza queda fuera.
+        const PF = Object.assign({}, ARR, BEATS.primer_frame || {});
+        const focoArr = PF.foco === "auto" ? (window.__FOCO__ || "50% 32%") : (PF.foco || "50% 50%");
+        if (PF.foco) tl.set(".camara", { transformOrigin: focoArr }, 0);
+        const escIni = (PF.escala === "auto" || ARR.escala === "auto")
+          ? (window.__FOCO_ESCALA__ || 2.0)
+          : (PF.escala || ARR.escala || 1.55);
+        tl.fromTo(".camara", { scale: escIni },
+          { scale: 1.0, duration: PF.duracion || ARR.duracion || 0.62, ease: ARR.ease || "power3.out" }, 0);
+        if (PF.foco) tl.set(".camara", { transformOrigin: "50% 50%" }, (PF.duracion || ARR.duracion || 0.62) + 0.001);
+        // Doble flash de silueta (ejemplo): blanco 0.20-0.30s y 0.37-0.43s. Aqui
+        // sin matting: dos pulsos de blanco a pantalla completa.
+        if (PF.destello_doble) {
+          const sil = document.getElementById("silueta");
+          if (sil) {
+            // silueta blanca con bloom (el fondo sigue visible), como la referencia
+            [[0.20, 0.30], [0.37, 0.43]].forEach(([a, b]) => {
+              tl.set(sil, { opacity: 1, visibility: "visible" }, a);
+              tl.set(sil, { opacity: 0, visibility: "hidden" }, b);
+            });
+            // y un velo blanco flojo a pantalla completa que da el 'lavado' del bloom
+            const velo = PF.destello_velo != null ? PF.destello_velo : 0.28;
+            tl.set("#flash", { opacity: velo }, 0.20); tl.set("#flash", { opacity: 0 }, 0.30);
+            tl.set("#flash", { opacity: velo }, 0.37); tl.set("#flash", { opacity: 0 }, 0.43);
+          } else {
+            const op = PF.destello_op || 0.88;
+            tl.set("#flash", { opacity: op }, 0.20); tl.set("#flash", { opacity: 0 }, 0.30);
+            tl.set("#flash", { opacity: op }, 0.37); tl.set("#flash", { opacity: 0 }, 0.43);
+          }
+        }
+        // Destello muy corto en el frame 0. Es lo que convierte el zoom out en un
+        // GOLPE: sin el, la apertura se lee como un movimiento; con el, como un
+        // impacto. Corto y flojo a proposito — un flash largo marea y se lee como
+        // un fallo de edicion.
+        if (ARR.destello) {
+          tl.fromTo("#flash", { opacity: ARR.destello },
+            { opacity: 0, duration: ARR.destello_dur || 0.16, ease: "power2.in" }, 0);
+        }
+        // y un rebote seco al aterrizar: el plano "encaja" en su sitio
+        if (ARR.rebote) {
+          tl.to(".camara", { scale: 1 + ARR.rebote, duration: 0.10, ease: "power2.out" },
+            (ARR.duracion || 0.62) * 0.92);
+          tl.to(".camara", { scale: 1.0, duration: 0.16, ease: "power2.inOut" },
+            (ARR.duracion || 0.62) * 0.92 + 0.10);
+        }
+      }
+
+      // ============ EDITORIAL: punch zoom en cada corte del A-roll ============
+      // Camara en tripode y TODO el movimiento en post: en cada corte un punch
+      // instantaneo (+10% para entrar, vuelta a base para salir, alternando) y dentro
+      // del clip una deriva lenta de +3-5%/s que se suelta de golpe en el corte
+      // siguiente. Punch 'hero' (+20%) en el titulo de seccion y en el CTA.
+      const PC = ((CFG.estimulos || {}).punch_en_cortes) || {};
+      const TRAMOS = window.__ZOOM_CORTES__ || [];
+      if (PC.activo && TRAMOS.length) {
+        // Cada tramo entre cortes trae su encuadre (escala) y, si es largo, hasta
+        // donde deriva MUY despacio. El cambio de encuadre cae EN el corte, en seco:
+        // se lee como un cambio de plano, no como un efecto.
+        const heroes = new Set();
+        if (window.__CLAVE__ && window.__CLAVE__.desde != null) heroes.add(window.__CLAVE__.desde);
+        TRAMOS.forEach((tr) => {
+          let esc = tr.escala;
+          // el CTA entra con un punch algo mayor ('hero'), como en la referencia
+          if ([...heroes].some((hh) => Math.abs(hh - tr.at) < 0.6)) esc = 1.0 + (PC.hero != null ? PC.hero : 0.14);
+          tl.set(".camara", { scale: esc }, tr.at);
+          if (tr.deriva_hasta != null && Math.abs(tr.deriva_hasta - esc) > 0.002) {
+            tl.to(".camara", { scale: tr.deriva_hasta, duration: Math.max(0.1, tr.fin - tr.at - 0.02), ease: "none" }, tr.at + 0.01);
+          }
+        });
+      }
+
+      // ============ zoom de camara ============
+      // Regla del video dopaminico: nunca mas de 3s sin estimulo.
+      // Cuanto zoom, desde la configuracion. En un plano ya cerrado un empujon del
+      // 12% ahoga: no deja respirar a la persona. El valor se elige por ENCUADRE.
+      const EST = CFG.estimulos || {};
+      const PUNCH = EST.zoom_punch != null ? EST.zoom_punch : 0.12;
+      const SUAVE = EST.zoom_suave != null ? EST.zoom_suave : 0.09;
+      // El golpe puede ser un corte seco o una rampa. Seco marca mas, pero rompe la
+      // sensacion de pieza cara: el ojo lo lee como un salto de montaje. Las
+      // duraciones tambien mandan desde el formato — un mismo recorrido en 1.6s o en
+      // 2.6s es la diferencia entre "efecto" y "movimiento de camara".
+      const SECO = EST.zoom_seco !== false;
+      const D_ENTRA = EST.zoom_dur_entra || 1.6;
+      const D_SALE = EST.zoom_dur_sale || 1.4;
+      const D_PUNCH = EST.zoom_dur_punch || 0.9;
+      let escala = 1.0;
+      ZOOMS.forEach((z, i) => {
+        // Un zoom lento no puede seguir andando cuando ya empezo el siguiente: dos
+        // tweens sobre la misma escala se pisan, y al renderizar por saltos de
+        // fotograma GSAP recoge el valor de partida equivocado y se ve un tirón. Cada
+        // zoom se corta justo antes de que arranque el que viene detras.
+        const hasta = ZOOMS[i + 1] ? ZOOMS[i + 1].at - 0.06 : Infinity;
+        const cabe = (d) => Math.max(0.5, Math.min(d, hasta - z.at));
+        if (z.tipo === "punch") {
+          escala = escala > 1.005 ? 1.0 : 1 + PUNCH;
+          if (SECO) tl.set(".camara", { scale: escala }, z.at);
+          else tl.to(".camara", { scale: escala, duration: cabe(D_PUNCH), ease: "sine.inOut" }, z.at);
+        } else if (z.tipo === "push") {
+          escala += SUAVE;
+          tl.to(".camara", { scale: escala, duration: cabe(D_ENTRA), ease: "sine.inOut" }, z.at);
+        } else {
+          escala = Math.max(1.0, escala - SUAVE);
+          tl.to(".camara", { scale: escala, duration: cabe(D_SALE), ease: "sine.inOut" }, z.at);
+        }
+      });
+
+      // ============ el numero del punto ============
+      // Entra de golpe con un rebote, se queda mientras dura su punto y sale seco.
+      // El chapon del numero es del formato de impacto. En TOP 10 el numero ya va
+      // dentro de la propia linea de texto ("9. SEÑALA ALGO ALEATORIO"): repetirlo en
+      // un cartel aparte es decir dos veces lo mismo, y encima se monta sobre la lamina.
+      const NUMS = ((CFG.numeros || {}).activo === false) ? [] : (window.__NUMEROS__ || []);
+      if (NUMS.length) {
+        const cont = document.getElementById("numero");
+        const sp = cont.querySelector("span");
+        NUMS.forEach((nu) => {
+          tl.set(sp, { textContent: String(nu.n) }, nu.at);
+          tl.fromTo(cont, { opacity: 0, scale: 0.6, y: -26 },
+            { opacity: 1, scale: 1, y: 0, duration: 0.34, ease: "back.out(2.4)" }, nu.at);
+          // un pulso corto al entrar y despues quieto: llama sin marear
+          tl.to(cont, { scale: 1.09, duration: 0.42, yoyo: true, repeat: 1,
+                        ease: "sine.inOut" }, nu.at + 0.34);
+          tl.to(cont, { opacity: 0, duration: 0.20, ease: "power2.in" }, nu.hasta);
+        });
+      }
+
+      // ============ TITULO APILADO DEL GANCHO (editorial) ============
+      // BEATS.gancho = { bloques: [ { at, fin, cada, lineas: [ {t, peso, dx, img} ] } ] }
+      // Cada linea es texto LITERAL del habla (verificar.py lo comprueba). Entran una a
+      // una, cada `cada` segundos (o con `at` propio), con un pop corto; el bloque se
+      // va en seco cuando entra el siguiente o en `fin`.
+      const GAN = (BEATS.gancho || {});
+      const GCFG = CFG.titulo_gancho || {};
+      (GAN.bloques || []).forEach((bl, bi, todos) => {
+        const el = document.createElement("div");
+        el.className = "bloque " + (bl.alinear || GCFG.alinear || "centro");
+        if (bl.y != null) el.style.top = bl.y;
+        (bl.lineas || []).forEach((ln) => {
+          const d = document.createElement("div");
+          d.className = "ln " + (ln.peso || "negrita") + (ln.grande ? " grande" : "");
+          if (ln.dx) d.style.transform = `translateX(${ln.dx})`;
+          // los digitos de una linea fina van mas grandes que su palabra ('las 3', '+40')
+          const txt = ln.t || "";
+          const esUltima = (bl.lineas || []).indexOf(ln) === (bl.lineas || []).length - 1;
+          if ((ln.peso === "fina") && esUltima && /\d/.test(txt) && txt.split(/\s+/).length > 1) {
+            d.innerHTML = txt.replace(/(\+?\d+)/g, '<span class="cifra">$1</span>');
+          } else {
+            d.textContent = txt;
+          }
+          if (ln.img) {
+            const im = document.createElement("img");
+            im.src = "props/" + ln.img; im.alt = "";
+            d.appendChild(im);
+          }
+          el.appendChild(d);
+        });
+        document.getElementById("gancho").appendChild(el);
+        const cada = bl.cada != null ? bl.cada : (GCFG.cada != null ? GCFG.cada : 0.5);
+        const anim = bl.animacion || GCFG.animacion || "pop";
+        const fin = bl.fin != null ? bl.fin
+          : (bi + 1 < todos.length ? todos[bi + 1].at : (GCFG.dur_defecto || 4.0) + bl.at);
+        tl.set(el, { opacity: 1 }, Math.max(0, bl.at - 0.01));
+        [...el.querySelectorAll(".ln")].forEach((d, i) => {
+          const ln = (bl.lineas || [])[i] || {};
+          const t = ln.at != null ? ln.at : bl.at + i * cada;
+          // En el frame 0 el titulo YA ESTA puesto (la referencia abre con la primera
+          // linea escrita sobre el primer plano): sin animacion, o el primer frame sale vacio.
+          if (t <= 0.02 || anim === "seco") {
+            tl.set(d, { opacity: 1, scale: 1 }, t);
+          } else if (false) {
+            tl.set(d, { opacity: 1 }, t);
+          } else if (anim === "fade") {
+            tl.fromTo(d, { opacity: 0 }, { opacity: 1, duration: 0.22, ease: "power2.out" }, t);
+          } else {   // pop: aparece con un empujon de escala muy corto, sin rebote largo
+            tl.fromTo(d, { opacity: 0, scale: 0.86 },
+              { opacity: 1, scale: 1, duration: 0.24, ease: "power3.out" }, t);
+          }
+        });
+        // salida en seco: la referencia no funde, sustituye
+        tl.set(el, { opacity: 0 }, fin);
+        // Ninguna linea se sale del cuadro: si una frase larga ("comer todavia
+        // menos" a 112px) no cabe en el ancho del bloque, se baja SU cuerpo hasta que
+        // quepa. Se mide con la fuente ya cargada.
+        const encajarLineas = () => {
+          const ancho = el.clientWidth || (1080 * 0.84);
+          [...el.querySelectorAll(".ln")].forEach((d) => {
+            let px = parseFloat(getComputedStyle(d).fontSize) || 100;
+            for (let i = 0; i < 24 && d.scrollWidth > ancho; i++) {
+              px = Math.round(px * 0.95);
+              d.style.fontSize = px + "px";
+            }
+          });
+        };
+        encajarLineas();
+        if (document.fonts && document.fonts.ready) document.fonts.ready.then(encajarLineas);
+        // ESCALERA (caro): la linea 1 anclada a la izquierda y las
+        // siguientes corridas a la derecha con los bordes derechos a ras. Se mide
+        // cuando la fuente ya esta cargada; antes, los anchos son de la fuente de reserva.
+        if ((bl.alinear || GCFG.alinear) === "escalera") {
+          const acomodar = () => {
+            const lns = [...el.querySelectorAll(".ln")];
+            if (!lns.length) return;
+            const derecha = lns[0].offsetLeft + lns[0].offsetWidth + (bl.ensancha || 0);
+            lns.slice(1).forEach((d, i) => {
+              const ln = (bl.lineas || [])[i + 1] || {};
+              if (ln.dx) return;                         // desplazamiento a mano: manda
+              d.style.marginLeft = Math.max(0, derecha - d.offsetWidth) + "px";
+            });
+          };
+          acomodar();
+          if (document.fonts && document.fonts.ready) document.fonts.ready.then(acomodar);
+        }
+      });
+
+      // la palabra clave entra cuando se dice y ya no se va
+      const CLAVE = window.__CLAVE__ || null;
+      // En dos lineas el CTA ya va en la propia linea grande, en ambar. El chapon
+      // de arriba seria un segundo CTA a la vez y en las referencias no existe.
+      if (CLAVE && CLAVE.palabra && !DOS) {
+        const el = document.getElementById("clave");
+        // Formato editorial: "Comenta" en blanco encima y la palabra en amarillo
+        // entre comillas, sin pastilla. La referencia no lleva verbo suelto: lo escribe.
+        const PK = CFG.palabra_clave || {};
+        const conComenta = !!PK.comenta;
+        if (conComenta) {
+          el.classList.add("comenta");
+          const c = document.createElement("div");
+          c.className = "cmt";
+          c.textContent = PK.comenta_texto || "Comenta";
+          el.insertBefore(c, el.firstChild);
+          // dos sitios (referencia): ARRIBA (centros 21%/27%) o ABAJO sobre la zona del
+          // subtitulo (58%/66%, palabra mas grande). Lo elige el beat o el formato.
+          const pos = (BEATS.cta || {}).posicion || PK.posicion || "arriba";
+          el.style.top = pos === "abajo" ? (PK.y_abajo || "56.5%") : (PK.y || "18%");
+          el.style.transform = "translateY(0)";   // `top` es el borde superior de "Comenta"
+          if (pos === "abajo") {
+            if (PK.cuerpo_abajo) el.querySelector("span").style.fontSize = PK.cuerpo_abajo + "px";
+            if (PK.cuerpo_comenta_abajo) c.style.fontSize = PK.cuerpo_comenta_abajo + "px";
+          }
+        }
+        // se ajusta si la palabra es larga, para no tocar los margenes
+        const pxIni = conComenta ? (parseFloat(el.querySelector("span").style.fontSize) || PK.cuerpo || 135) : 138;
+        // Se mide la PALABRA: el contenedor va de borde a borde y su scrollWidth es
+        // siempre 1080, con lo que el bucle bajaba hasta 64px sin motivo.
+        const spanK = el.querySelector("span");
+        for (let px = pxIni; px >= 64; px -= 4) {
+          spanK.style.fontSize = px + "px";
+          if (spanK.getBoundingClientRect().width <= el.getBoundingClientRect().width * 0.82) break;
+        }
+        if (conComenta) {
+          // la referencia entra EN SECO y no late: aparece y se queda
+          tl.set(el, { opacity: 1 }, CLAVE.desde);
+        } else {
+          tl.fromTo(el, { opacity: 0, scale: 0.72, y: -18 },
+            { opacity: 1, scale: 1, y: 0, duration: 0.42, ease: "back.out(2.2)" }, CLAVE.desde);
+          // un latido al entrar, para que se note, y despues quieta
+          tl.to(el, { scale: 1.07, duration: 0.5, yoyo: true, repeat: 1, ease: "sine.inOut" },
+            CLAVE.desde + 0.42);
+        }
+      }
+
+      tl.set({}, {}, {{DUR}});
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+    </script>
+  </body>
+</html>
