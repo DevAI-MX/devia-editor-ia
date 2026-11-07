@@ -1,5 +1,6 @@
 # requisitos.sh: que herramientas del sistema le faltan al editor. Lo carga setup.sh.
 # hyperframes 0.7.110 (el motor de render) declara node >= 22 en su campo engines.
+# El mismo minimo esta en setup-windows.ps1 y en la CI: se cambian juntos.
 NODE_MINIMO=22
 
 version_mayor_node() { node -v 2>/dev/null | tr -d 'v\r' | cut -d. -f1; }

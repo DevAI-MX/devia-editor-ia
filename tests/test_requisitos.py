@@ -27,11 +27,15 @@ def test_node_viejo_ausente_o_ilegible_no_esta_al_dia(definicion):
     assert con_node(definicion, "node_al_dia").returncode != 0
 
 
+# command -v tambien encuentra funciones: asi la prueba no depende de lo que tenga instalado el equipo.
+HERRAMIENTAS = "ffmpeg() { :; }; ffprobe() { :; }; uv() { :; }; uvx() { :; }; npx() { :; }"
+
+
 def test_un_node_viejo_cuenta_como_herramienta_que_falta():
-    r = con_node("node() { printf 'v20.18.0\\n'; }", "herramientas_que_faltan")
-    assert "node22" in r.stdout.split()
+    r = con_node(HERRAMIENTAS + "; node() { printf 'v20.18.0\\n'; }", "herramientas_que_faltan")
+    assert r.stdout.split() == ["node22"]
 
 
 def test_con_todo_instalado_no_falta_nada():
-    r = con_node("node() { printf 'v22.11.0\\n'; }", "herramientas_que_faltan")
+    r = con_node(HERRAMIENTAS + "; node() { printf 'v22.11.0\\n'; }", "herramientas_que_faltan")
     assert r.stdout.strip() == ""

@@ -35,7 +35,7 @@ if [ -n "$FALTA" ]; then
       # uv se instala sin sudo en ~/.local/bin; ffmpeg y node piden la contrasena del equipo.
       if ! command -v uv >/dev/null 2>&1; then
         echo "  ..  instalando uv"
-        curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null 2>&1 || no "no se pudo instalar uv"
+        curl -LsSf https://astral.sh/uv/install.sh | sh >/dev/null || no "no se pudo instalar uv"
         export PATH="$HOME/.local/bin:$PATH"
       fi
       FALTA="$(herramientas_que_faltan)"

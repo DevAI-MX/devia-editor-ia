@@ -54,7 +54,10 @@ jobs:
           $ast = [System.Management.Automation.Language.Parser]::ParseFile("$PWD\setup-windows.ps1", [ref]$null, [ref]$null)
           $funciones = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $false)
           foreach ($f in $funciones) { . ([scriptblock]::Create($f.Extent.Text)) }
+          $NodeMinimo = 22
           if (-not (Node-AlDia)) { "Node-AlDia no reconoce $(node -v)"; exit 1 }
+          function node { "v20.18.0" }
+          if (Node-AlDia) { "Node-AlDia acepta un Node 20"; exit 1 }
 
       - name: modelo de transcripcion en cache
         uses: actions/cache@v6.1.0

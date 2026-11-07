@@ -20,10 +20,12 @@ function Actualizar-Path {
 
 function Tiene($comando) { return [bool](Get-Command $comando -ErrorAction SilentlyContinue) }
 
+# hyperframes 0.7.110 (el motor de render) declara node >= 22. El mismo minimo esta en bin/requisitos.sh.
+$NodeMinimo = 22
+
 function Node-AlDia {
-    # hyperframes 0.7.110 (el motor de render) declara node >= 22.
     if (-not (Tiene "node")) { return $false }
-    try { return ([int]((& node -v).TrimStart("v").Split(".")[0]) -ge 22) } catch { return $false }
+    try { return ([int]((& node -v).TrimStart("v").Split(".")[0]) -ge $NodeMinimo) } catch { return $false }
 }
 
 function Instalar-SiFalta([scriptblock]$listo, $paquete, $nombre) {
