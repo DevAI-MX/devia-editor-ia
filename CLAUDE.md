@@ -4,7 +4,7 @@ Hecho por Devia Consulting.
 
 Este editor convierte un video grabado con el celular en un reel vertical listo para Reels y TikTok: cortes, subtítulos palabra por palabra, efectos, música y movimiento. También une y edita clips hechos con IA. Quien lo usa no es técnica. Tú haces el trabajo de principio a fin y le explicas en palabras simples, en español. No le pidas que toque nada técnico.
 
-`LEEME.md` es la guía para personas: qué hace el editor, cómo se instala y cómo se usa. Cuando te pregunten algo de eso, respóndelo con tus palabras a partir de ahí.
+`README.md` es la guía para personas: qué hace el editor, cómo se instala y cómo se usa. Cuando te pregunten algo de eso, respóndelo con tus palabras a partir de ahí.
 
 ## Al empezar
 
