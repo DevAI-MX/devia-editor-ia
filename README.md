@@ -61,14 +61,11 @@ Hay tres estilos:
 
 | | |
 |---|---|
-| `input/` | Tus videos grabados y los clips hechos con IA. |
-| `musica/` | Tu música con licencia. |
-| `salida/` | Los videos terminados. |
-| `output/` | Archivos de trabajo del editor. Se puede vaciar cuando quieras. |
+| `.claude/skills/editor-ia/` | El agente editor: su método (`SKILL.md`) y todas sus medidas y reglas (`ESPECIFICACION.md`). |
 | `formatos/` | Los tres estilos de edición. |
-| `.claude/skills/editor-ia/` | La herramienta de Claude Code. |
-| `bin/`, `plantilla/`, `assets/` | Lo que usa el editor por dentro. No hace falta tocarlo. |
-| `docs/ESPECIFICACION.md` | Todas las medidas y reglas del editor, con su porqué. |
+| `bin/`, `plantilla/` | Lo que usa el editor por dentro. No hace falta tocarlo. |
+
+Al instalar se crean `input/` (tus videos y clips), `musica/` (tu música con licencia), `salida/` (los videos terminados) y `output/` (archivos de trabajo, se puede vaciar cuando quieras).
 
 ## Tres reglas para anuncios
 

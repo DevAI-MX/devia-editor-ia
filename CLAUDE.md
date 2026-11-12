@@ -24,7 +24,7 @@ Cuando digan "instala el editor" (o algo parecido), hazlo tú de principio a fin
 
 ## Cómo se edita
 
-Todo el método está en `.claude/skills/editor-ia/SKILL.md`. Léelo antes de editar, y `docs/ESPECIFICACION.md` para las medidas.
+Todo el método está en `.claude/skills/editor-ia/SKILL.md`. Léelo antes de editar, y `.claude/skills/editor-ia/ESPECIFICACION.md` para las medidas.
 
 - **Video grabado:** el video va en `input/`, la música con licencia en `musica/` (si no hay, el editor crea una base propia). Se entrega en `salida/`.
 - **Clips hechos con IA (Google Flow u otro):** van juntos en `input/<carpeta>/`. El editor los une, les quita el silencio, corrige el ritmo y los edita. Si son dos personajes que conversan, cada clip entra unos 0.3 s antes de que termine el anterior.

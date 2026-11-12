@@ -9,8 +9,3 @@ output/*
 salida/*
 assets/sfx/*
 musica/*
-!musica/LEEME.md
-!input/.gitkeep
-!output/.gitkeep
-!salida/.gitkeep
-!assets/sfx/.gitkeep

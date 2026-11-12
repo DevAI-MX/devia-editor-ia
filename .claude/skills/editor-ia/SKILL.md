@@ -20,7 +20,7 @@ Todo pasa dentro de la carpeta del editor y funciona igual en Mac, Windows (Git 
 Los scripts de Python se corren con `bash bin/py`, que usa el Python del editor en cualquier
 equipo. No uses `python3` ni `source .venv/bin/activate`: en Windows no existen.
 
-1. **Lee `docs/ESPECIFICACION.md`.** Tiene cada medida y cada regla con su porque. No
+1. **Lee `.claude/skills/editor-ia/ESPECIFICACION.md`.** Tiene cada medida y cada regla con su porque. No
    improvises valores.
 2. **El estilo manda.** Cada estilo es un archivo en `formatos/<estilo>.json` y los
    scripts lo leen con `bin/cfg.py`. Se elige con `FORMATO=<estilo>`. Si el usuario no
@@ -115,5 +115,5 @@ a `clip-10.mp4`), antes del proceso normal:
 
 ## Al cambiar un estilo
 
-Cambia `formatos/<estilo>.json` y anota en `docs/ESPECIFICACION.md` el valor nuevo y el
+Cambia `formatos/<estilo>.json` y anota en `.claude/skills/editor-ia/ESPECIFICACION.md` el valor nuevo y el
 porque. Ningun valor vive escrito a mano en el codigo.
