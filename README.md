@@ -18,7 +18,7 @@ Abre Claude Code en la carpeta donde quieras guardar tus videos (por ejemplo, Do
 
 Claude lo descarga, revisa qué falta, lo instala y te avisa cuando está listo. La primera vez descarga unos 3 GB, así que tarda entre 10 y 30 minutos según tu internet. Al terminar, abre Claude Code dentro de la carpeta `devia-editor-ia` para editar.
 
-Si prefieres bajarlo tú: botón verde **Code** de GitHub y después **Download ZIP**. Descomprímelo, abre Claude Code dentro de esa carpeta y escríbele **Instala el editor**.
+Si prefieres bajarlo tú: **[descarga el ZIP aquí](https://github.com/DevAI-MX/devia-editor-ia/releases/latest/download/devia-editor-ia.zip)**. Descomprímelo, abre Claude Code dentro de la carpeta `devia-editor-ia` y escríbele **Instala el editor**.
 
 | Equipo | Qué te puede pedir |
 |---|---|
@@ -91,7 +91,15 @@ Para la IA a la que le pidieron instalarlo. Habla con la persona en español y e
    cd devia-editor-ia
    ```
 
-   Si `git` no existe (Windows recién instalado), pídele a la persona que baje el ZIP (botón **Code**, después **Download ZIP**), lo descomprima y te diga dónde quedó. Si GitHub responde que no encuentra el repositorio o pide usuario y contraseña, el repositorio está privado: la persona necesita que Devia la invite y aceptar la invitación que le llega por correo. Con esa cuenta puede bajar el ZIP desde el navegador, o iniciar sesión con `gh auth login` para que vuelvas a clonar.
+   Si `git` no existe (Windows recién instalado), baja el ZIP y descomprímelo; `curl` y `tar` vienen en Mac, Linux y Windows 10 o más nuevo:
+
+   ```bash
+   curl -L -o devia-editor-ia.zip https://github.com/DevAI-MX/devia-editor-ia/releases/latest/download/devia-editor-ia.zip
+   tar -xf devia-editor-ia.zip
+   cd devia-editor-ia
+   ```
+
+   Si eso falla, pídele a la persona que baje el ZIP desde el enlace de «Empieza aquí», lo descomprima y te diga dónde quedó. Si GitHub responde que no encuentra el repositorio o pide usuario y contraseña, el repositorio está privado: la persona necesita que Devia la invite y aceptar la invitación que le llega por correo. Con esa cuenta puede bajar el ZIP desde el navegador, o iniciar sesión con `gh auth login` para que vuelvas a clonar.
 
 2. **Instala según el sistema**, desde la carpeta del editor:
 
